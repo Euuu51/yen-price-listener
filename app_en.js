@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114050809";
+import { Listener } from "./listener.js?v=20261114050946";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -34,16 +34,26 @@ const stamp = t => fileMode ? clock(t) : new Date(wall0 + t * 1000).toLocaleTime
 function status(text, live = false) { $("state").textContent = text; $("dot").classList.toggle("on", live); }
 function warn(text) { $("warn").textContent = text || ""; }
 
-// --- "hearing…" (number being spoken, before "yen")
-let hearTimer = 0;
+// --- "hearing…" (number being spoken, before "yen"). Shows the pesos too, so a missed "yen" still gives the seller
+// the amount; tapping it keeps it as a price (2026-11-14, user: "yen が聞き取れないと悔しい")
+let hearTimer = 0, hearP = null;
 function onPartial(p) {
   clearTimeout(hearTimer);
   const el = $("hearing");
-  if (!p) { el.classList.remove("on"); return; }
-  el.querySelector("span").textContent = fmtY(p.yen);
-  el.classList.add("on");
-  hearTimer = setTimeout(() => el.classList.remove("on"), 4000);
+  if (!p) { el.hidden = true; hearP = null; return; }
+  hearP = p;
+  el.querySelector(".hy").textContent = fmtY(p.yen);
+  el.querySelector(".hp").textContent = php(p.yen);
+  el.hidden = false;
+  hearTimer = setTimeout(() => { el.hidden = true; hearP = null; }, 8000);
 }
+$("hearing").onclick = () => {
+  const p = hearP; if (!p) return;
+  const li = addRow(p.t, pair(p.yen), "Kept by tap (no “yen” heard)");
+  rowOf.set(p.t, li);
+  recent.push({ t: p.t, yen: p.yen, all: null, li, confirmed: null, manual: true });
+  showLatest(p.yen, p.words, p.t);
+};
 
 // --- latest price card
 let bigT = null, bigAt = 0;
@@ -110,6 +120,8 @@ function onPrice(p) {
     const r = recent.find(x => x.yen === p.yen); if (r) { r.t2 = p.t; }
     return;
   }
+  const m = recent.find(x => x.manual && x.yen === p.yen && Math.abs(p.t - x.t) < 5);
+  if (m) { m.manual = false; setSub(m.li, ""); return; }                    // kept by tap, then "yen" came after all
   const li = addRow(p.t, pair(p.yen));
   rowOf.set(p.t, li);
   recent.push({ t: p.t, yen: p.yen, all: null, li, confirmed: null });
@@ -155,7 +167,7 @@ function onPeso(e) {
 function onWord() {}
 
 // --- model: load once when the page opens (on phones, loading after the tap loses the "user gesture" for audio)
-globalThis.__pl = { onPrice, onAlts, onPeso };      // for headless UI tests
+globalThis.__pl = { onPrice, onAlts, onPeso, onPartial };      // for headless UI tests
 let L = null, loading = null;
 async function fetchProgress(url) {
   const r = await fetch(url);
@@ -222,12 +234,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114050809");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114050946");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114050809");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114050946");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });

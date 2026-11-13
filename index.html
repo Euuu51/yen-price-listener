@@ -21,6 +21,7 @@ header h1{font-size:1.5rem;margin:0;letter-spacing:-.01em}
 header p{margin:4px 0 0;color:var(--muted)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
 .num{font-variant-numeric:tabular-nums}
+[hidden]{display:none!important}
 
 /* Start / status */
 #start{width:100%;font:inherit;font-size:1.3rem;font-weight:700;min-height:68px;border-radius:14px;border:0;background:var(--accent);color:var(--accent-fg);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
@@ -38,8 +39,9 @@ header p{margin:4px 0 0;color:var(--muted)}
 
 /* Latest price */
 .latest .label{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:.9rem}
-.hearing{min-height:1.7em;color:var(--faint);font-size:1.15rem;font-weight:600;visibility:hidden}
-.hearing.on{visibility:visible}
+.hearing{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;width:100%;margin:8px 0 4px;text-align:left;font:inherit;font-size:1.2rem;font-weight:600;color:var(--muted);background:var(--bg);border:1.5px dashed var(--line);border-radius:10px;padding:8px 12px;min-height:44px;cursor:pointer}
+.hearing .hp{color:var(--peso);font-size:1.5rem}
+.hearing small{font-size:.8rem;font-weight:500;color:var(--faint);margin-left:auto}
 .yen{font-size:1.7rem;font-weight:700;line-height:1.2}
 .php{font-size:3.4rem;font-weight:800;color:var(--peso);line-height:1.05;letter-spacing:-.02em;overflow-wrap:anywhere}
 .rateline{color:var(--muted);font-size:.9rem;margin-top:2px}
@@ -105,7 +107,7 @@ footer{color:var(--faint);font-size:.85rem;text-align:center}
 
 <section class="card latest" id="latest" aria-live="polite">
   <div class="label"><span>Latest price</span><span id="ago" class="num"></span></div>
-  <div class="hearing num" id="hearing">Hearing <span></span>…</div>
+  <button class="hearing num" id="hearing" hidden><span>Hearing <span class="hy"></span> →</span><span class="hp"></span><small>Tap to keep</small></button>
   <div id="price" hidden>
     <div class="yen num" id="yen"></div>
     <div class="php num" id="php"></div>
@@ -140,6 +142,8 @@ footer{color:var(--faint);font-size:.85rem;text-align:center}
   <div>
     <ul>
       <li>Say prices in English and end with “yen”, like “two thousand five hundred yen”.</li>
+      <li>Say “yen” right after the number, with a clear “y”. A pause before it, a slow “yen” or “en” is often missed.</li>
+      <li>While you speak, the number shows in a dashed box. If “yen” was missed, tap it to keep the price.</li>
       <li>If it isn’t sure, it shows other possible prices. Tap the right one.</li>
       <li>Check the number before you say it.</li>
       <li>Runs on your phone. No audio is uploaded or saved.</li>
@@ -148,6 +152,6 @@ footer{color:var(--faint);font-size:.85rem;text-align:center}
 </details>
 <footer>Experimental</footer>
 </main>
-<script type="module" src="app_en.js?v=20261114050809"></script>
+<script type="module" src="app_en.js?v=20261114050946"></script>
 </body>
 </html>
