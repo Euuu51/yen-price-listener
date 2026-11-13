@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114060827";
+import { Listener } from "./listener.js?v=20261114061123";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -40,34 +40,47 @@ function warn(text) { $("warn").textContent = text || ""; $("warn").hidden = !te
 
 // --- "hearing…" (number being spoken, before "yen"). Shows the pesos too, so a missed "yen" still gives the seller
 // the amount; tapping it keeps it as a price (2026-11-14, user: "yen が聞き取れないと悔しい")
-let hearTimer = 0, hearP = null;
+let hearTimer = 0, hearP = null, hearAltTimer = 0;
 function onPartial(p) {
-  clearTimeout(hearTimer);
+  clearTimeout(hearTimer); clearTimeout(hearAltTimer);
   const el = $("hearing");
-  const idle = () => { el.classList.remove("on"); $("hv").textContent = "…"; hearP = null; updUse(); };
+  const idle = () => { el.classList.remove("on"); $("hv").textContent = "…"; hearP = null; updUse(); restoreAlts(); };
   if (!p) { idle(); return; }
   hearP = p;
   $("hv").innerHTML = `${fmtY(p.yen)} → <span class="hp">${php(p.yen)}</span>`;
   el.classList.add("on");
   updUse();
   hearTimer = setTimeout(idle, 8000);
+  // other readings of the number being heard go to the "other possible prices" row; the newer thing wins (2026-11-14 user)
+  hearAltTimer = setTimeout(() => {
+    if (hearP !== p || !L || !L.altsAt) return;
+    const a = L.altsAt(p.t, p.yen);
+    const others = a ? a.alts.slice(1).map(x => x.yen) : [];
+    if (others.length) showHearAlts(others); else restoreAlts();
+  }, 350);                                         // a little later, so the reading covers the end of the last word
 }
-setAlts([]);
 $("hearing").onclick = () => applyHearing();
-function applyHearing() {
+// apply the number being heard (no "yen"), or one of its other readings
+function applyHearing(y) {
   const p = hearP; if (!p) return;
-  const li = addRow(p.t, pair(p.yen), "Applied (no “yen” heard)");
+  y = y ?? p.yen;
+  const a = L && L.altsAt ? L.altsAt(p.t, p.yen) : null;           // other readings of the same stretch of sound
+  const li = addRow(p.t, pair(y), "Applied (no “yen” heard)");
   rowOf.set(p.t, li);
-  recent.push({ t: p.t, yen: p.yen, all: null, li, confirmed: null, manual: true });
-  showLatest(p.yen, p.words, p.t);
-  const a = L && L.altsAt ? L.altsAt(p.t, p.yen) : null;             // other readings of the same stretch of sound
-  if (a) { onAlts({ t: p.t, ...a, tentative: false }); setSub(li, "Applied (no “yen” heard)" + (a.alts.length > 1 ? " · or " + a.alts.slice(1).map(x => `${fmtY(x.yen)} (${php(x.yen)})`).join(", ") : "")); }
+  recent.push({ t: p.t, yen: y, all: null, li, confirmed: null, manual: true });
+  showLatest(y, p.words, p.t);
+  if (a) {
+    const vals = [y, ...a.alts.map(x => x.yen).filter(v => v !== y)];
+    const all = [...vals, ...a.all.map(x => x.yen).filter(v => !vals.includes(v))].slice(0, 4);
+    onAlts({ t: p.t, alts: vals.slice(0, 4).map(v => ({ yen: v })), all: all.map(v => ({ yen: v })), tentative: false });
+    setSub(li, "Applied (no “yen” heard)" + (vals.length > 1 ? " · or " + vals.slice(1).map(v => `${fmtY(v)} (${php(v)})`).join(", ") : ""));
+  }
 }
 
 // --- the price display (calculator display; the keypad below types into it)
 let bigT = null, bigAt = 0;
 function showLatest(y, words, t) {
-  bigT = t; bigAt = Date.now();
+  bigT = t; bigAt = Date.now(); altMode = "price";
   kv = ""; kact = false;                                                     // a new price ends any typing in progress
   note("");                                                    // no "Heard: …" line (2026-11-14, user: not needed)
   kshow();
@@ -84,14 +97,24 @@ function tick() {
 setInterval(tick, 1000);
 let noteHtml = "Say a price, or type it below.";
 function note(html) { noteHtml = html; if (!kact) $("note").innerHTML = html; }
-function setAlts(list, label = "Not sure. Tap if it was:") {
+// the "other possible prices" row shows either the price on screen's alternatives, or (newer) those of the number being heard
+let altMode = "price", priceAlts = { list: [], label: "" };
+function renderAlts(list, label) {
   $("alts").innerHTML = list.length ? `<div class="h">${label}</div><div class="chips">${list.map(chip).join("")}</div>`
                                     : `<div class="h">Other possible prices</div><div class="none">None</div>`;
 }
+function setAlts(list, label = "Not sure. Tap if it was:") {
+  priceAlts = { list, label };
+  if (altMode === "price") renderAlts(list, label);
+}
+function showHearAlts(list) { altMode = "hearing"; renderAlts(list, "Hearing. Could also be:"); }
+function restoreAlts() { if (altMode !== "hearing") return; altMode = "price"; renderAlts(priceAlts.list, priceAlts.label); }
+setAlts([]);
 const chip = y => `<button class="chip num" data-yen="${y}">${fmtY(y)} · <span class="p">${php(y)}</span></button>`;
 // tap an alternative: it becomes the price (sellers know what they said)
 $("alts").addEventListener("click", e => {
   const b = e.target.closest(".chip"); if (!b) return;
+  if (altMode === "hearing") { applyHearing(+b.dataset.yen); return; }      // an alternative of the number being heard
   const y = +b.dataset.yen, r = recent.find(x => x.t === bigT);
   if (!r) return;
   const was = r.picked ?? r.yen;
@@ -240,7 +263,7 @@ $("histbtn").onclick = () => { $("histview").hidden = false; $("histview").scrol
 $("back").onclick = () => { $("histview").hidden = true; };
 
 // --- model: load once when the page opens (on phones, loading after the tap loses the "user gesture" for audio)
-globalThis.__pl = { onPrice, onAlts, onPeso, onPartial };      // for headless UI tests
+globalThis.__pl = { onPrice, onAlts, onPeso, onPartial, get L() { return L; } };      // for headless UI tests
 let L = null, loading = null;
 async function fetchProgress(url) {
   const r = await fetch(url);
@@ -307,12 +330,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114060827");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114061123");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114060827");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114061123");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
