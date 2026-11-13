@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114050946";
+import { Listener } from "./listener.js?v=20261114051412";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -32,7 +32,7 @@ const stamp = t => fileMode ? clock(t) : new Date(wall0 + t * 1000).toLocaleTime
 
 // --- status line
 function status(text, live = false) { $("state").textContent = text; $("dot").classList.toggle("on", live); }
-function warn(text) { $("warn").textContent = text || ""; }
+function warn(text) { $("warn").textContent = text || ""; $("warn").hidden = !text; $("state").hidden = !!text; }   // a warning takes the status text's place (same slot)
 
 // --- "hearing…" (number being spoken, before "yen"). Shows the pesos too, so a missed "yen" still gives the seller
 // the amount; tapping it keeps it as a price (2026-11-14, user: "yen が聞き取れないと悔しい")
@@ -40,13 +40,14 @@ let hearTimer = 0, hearP = null;
 function onPartial(p) {
   clearTimeout(hearTimer);
   const el = $("hearing");
-  if (!p) { el.hidden = true; hearP = null; return; }
+  const idle = () => { el.classList.remove("on"); $("hv").textContent = "…"; hearP = null; };
+  if (!p) { idle(); return; }
   hearP = p;
-  el.querySelector(".hy").textContent = fmtY(p.yen);
-  el.querySelector(".hp").textContent = php(p.yen);
-  el.hidden = false;
-  hearTimer = setTimeout(() => { el.hidden = true; hearP = null; }, 8000);
+  $("hv").innerHTML = `${fmtY(p.yen)} → <span class="hp">${php(p.yen)}</span>`;
+  el.classList.add("on");
+  hearTimer = setTimeout(idle, 8000);
 }
+setAlts([]);
 $("hearing").onclick = () => {
   const p = hearP; if (!p) return;
   const li = addRow(p.t, pair(p.yen), "Kept by tap (no “yen” heard)");
@@ -59,10 +60,10 @@ $("hearing").onclick = () => {
 let bigT = null, bigAt = 0;
 function showLatest(y, words, t) {
   bigT = t; bigAt = Date.now();
-  $("price").hidden = false; $("empty").hidden = true;
+  $("price").classList.remove("blank");
   $("yen").textContent = fmtY(y); $("php").textContent = php(y); $("rateline").textContent = `at ₱${rate} per ¥1`;
-  $("heard").textContent = words ? `Heard: “${words}”` : "";
-  $("conf").innerHTML = ""; $("alts").innerHTML = "";
+  note(words ? `<span class="heard">Heard: “${esc(words)}”</span>` : "");
+  setAlts([]);
   const c = $("latest"); c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash");
   onPartial(null); tick();
 }
@@ -72,6 +73,11 @@ function tick() {
   $("ago").textContent = s < 5 ? "just now" : s < 60 ? `${s} s ago` : s < 3600 ? `${Math.floor(s / 60)} min ago` : "";
 }
 setInterval(tick, 1000);
+function note(html) { $("note").innerHTML = html; }
+function setAlts(list, label = "Not sure. Tap if it was:") {
+  $("alts").innerHTML = list.length ? `<div class="h">${label}</div><div class="chips">${list.map(chip).join("")}</div>`
+                                    : `<div class="h">Other possible prices</div><div class="none">None</div>`;
+}
 const chip = y => `<button class="chip num" data-yen="${y}">${fmtY(y)} · <span class="p">${php(y)}</span></button>`;
 // tap an alternative: it becomes the price (sellers know what they said)
 $("alts").addEventListener("click", e => {
@@ -81,10 +87,10 @@ $("alts").addEventListener("click", e => {
   const was = r.picked ?? r.yen;
   r.picked = y;
   $("yen").textContent = fmtY(y); $("php").textContent = php(y);
-  $("heard").textContent = `You picked this. First heard as ${fmtY(r.yen)}`;
+  note(`You picked this · first heard ${fmtY(r.yen)}`);
   const others = (r.alts || []).filter(v => v !== y);
   if (!others.includes(was)) others.unshift(was);
-  $("alts").innerHTML = others.length ? `<div class="h">Other possible prices:</div><div class="chips">${others.map(chip).join("")}</div>` : "";
+  setAlts(others, "Other possible prices:");
   r.li.querySelector(".v").innerHTML = pair(y);
   setSub(r.li, `Picked · first heard <span class="was">${fmtY(r.yen)}</span>`);
 });
@@ -110,7 +116,9 @@ function setSub(li, html, cls = "") {
 $("clear").onclick = () => {
   $("hist").innerHTML = ""; $("hempty").hidden = false; $("clear").hidden = true;
   rowOf.clear(); recent.length = 0;
-  bigT = null; bigAt = 0; $("price").hidden = true; $("empty").hidden = false; tick();
+  bigT = null; bigAt = 0; tick();
+  $("price").classList.add("blank"); $("yen").textContent = "¥ —"; $("php").textContent = "₱ —"; $("rateline").textContent = "";
+  note("Say a price and it shows here."); setAlts([]);
 };
 
 // --- events from the listener
@@ -142,7 +150,7 @@ function onAlts(a) {
   if (r) r.alts = a.alts.map(x => x.yen);
   const li = rowOf.get(a.t);
   if (li && !(r && r.confirmed)) setSub(li, "or " + others.map(v => `${fmtY(v)} (${php(v)})`).join(", "));
-  if (bigT === a.t && !(r && (r.confirmed || r.picked != null))) $("alts").innerHTML = `<div class="h">Not sure. Tap if it was:</div><div class="chips">${others.map(chip).join("")}</div>`;
+  if (bigT === a.t && !(r && (r.confirmed || r.picked != null))) setAlts(others);
 }
 
 function onPeso(e) {
@@ -155,9 +163,8 @@ function onPeso(e) {
     r.li.querySelector(".v").innerHTML = pair(c);
     setSub(r.li, `✓ You said ${fmtP(e.php)}` + (c !== r.yen ? ` · first heard <span class="was">${fmtY(r.yen)}</span>` : ""), "ok");
     if (bigT === r.t) {
-      $("yen").textContent = fmtY(c); $("php").textContent = php(c); $("alts").innerHTML = "";
-      if (c !== r.yen) $("heard").textContent = `First heard as ${fmtY(r.yen)}`;
-      $("conf").innerHTML = `<span class="badge">✓ Matches the ${esc(fmtP(e.php))} you said</span>`;
+      $("yen").textContent = fmtY(c); $("php").textContent = php(c); setAlts([]);
+      note(`<span class="badge">✓ Matches the ${esc(fmtP(e.php))} you said</span>`);
     }
     return;
   }
@@ -234,12 +241,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114050946");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114051412");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114050946");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114051412");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
@@ -250,7 +257,7 @@ async function startMic() {
     quiet = pk < 0.003 ? quiet + 1 : 0;                       // ~10 s of near silence
     L.push(e.data.samples).then(() => {
       if (L.dropped > behind) { behind = L.dropped; warn("This phone is falling behind. Close other apps or tabs."); }
-      else if (quiet > 60) warn("It’s very quiet. Turn the stream up or move closer to the speaker.");
+      else if (quiet > 60) warn("It’s very quiet. Speak closer to the phone.");
       else if ($("warn").textContent.startsWith("It’s very quiet")) warn("");
     });
   };
