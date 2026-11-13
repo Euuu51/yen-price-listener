@@ -1,8 +1,8 @@
 // 聞き取りの本体: 16 kHz の音 → log-mel → モデル（160 ms ごと、状態つき）→ 語 → 値段。
 // ブラウザ（onnxruntime-web）でも node（onnxruntime-node）でも同じコードで動く。ort は外から渡す。
-import { LogMel } from "./frontend.js?v=20261114061437";
-import { NUMWORDS, priceOfRun } from "./words.js?v=20261114061437";
-import { cands, WIN_BACK, WIN_FWD } from "./nbest.js?v=20261114061437";
+import { LogMel } from "./frontend.js?v=20261114061626";
+import { NUMWORDS, priceOfRun } from "./words.js?v=20261114061626";
+import { cands, WIN_BACK, WIN_FWD } from "./nbest.js?v=20261114061626";
 
 // 新方式（2026-11-12、train/curve.py の listener_events と同じ）
 export const GAP = 1.5;        // 数の語と語の間がこれ（秒、語の出た時刻どうし）より長く空いたら別の数（one hundred …… one thousand）。yen の前の間では切らない。売り手の配信で 1.2 秒は値段の頭を切った（80→78）、1.5 秒は 82

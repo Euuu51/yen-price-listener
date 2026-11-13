@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114061437";
+import { Listener } from "./listener.js?v=20261114061626";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -330,12 +330,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114061437");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114061626");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114061437");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114061626");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
@@ -346,8 +346,8 @@ async function startMic() {
     quiet = pk < 0.003 ? quiet + 1 : 0;                       // ~10 s of near silence
     L.push(e.data.samples).then(() => {
       if (L.dropped > behind) { behind = L.dropped; warn("Falling behind…"); }
-      else if (quiet > 60) warn("Very quiet…");
-      else if ($("warn").textContent.startsWith("Very quiet")) warn("");
+      else if (quiet > 60) warn("It’s very quiet…");
+      else if ($("warn").textContent.startsWith("It’s very quiet")) warn("");
     });
   };
   src.connect(node);
