@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114060003";
+import { Listener } from "./listener.js?v=20261114060136";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -43,23 +43,25 @@ let hearTimer = 0, hearP = null;
 function onPartial(p) {
   clearTimeout(hearTimer);
   const el = $("hearing");
-  const idle = () => { el.classList.remove("on"); $("hv").textContent = "…"; hearP = null; };
+  const idle = () => { el.classList.remove("on"); $("hv").textContent = "…"; hearP = null; updUse(); };
   if (!p) { idle(); return; }
   hearP = p;
   $("hv").innerHTML = `${fmtY(p.yen)} → <span class="hp">${php(p.yen)}</span>`;
   el.classList.add("on");
+  updUse();
   hearTimer = setTimeout(idle, 8000);
 }
 setAlts([]);
-$("hearing").onclick = () => {
+$("hearing").onclick = () => applyHearing();
+function applyHearing() {
   const p = hearP; if (!p) return;
-  const li = addRow(p.t, pair(p.yen), "Applied by tap (no “yen” heard)");
+  const li = addRow(p.t, pair(p.yen), "Applied (no “yen” heard)");
   rowOf.set(p.t, li);
   recent.push({ t: p.t, yen: p.yen, all: null, li, confirmed: null, manual: true });
   showLatest(p.yen, p.words, p.t);
   const a = L && L.altsAt ? L.altsAt(p.t, p.yen) : null;             // other readings of the same stretch of sound
-  if (a) { onAlts({ t: p.t, ...a, tentative: false }); setSub(li, "Applied by tap (no “yen” heard)" + (a.alts.length > 1 ? " · or " + a.alts.slice(1).map(x => `${fmtY(x.yen)} (${php(x.yen)})`).join(", ") : "")); }
-};
+  if (a) { onAlts({ t: p.t, ...a, tentative: false }); setSub(li, "Applied (no “yen” heard)" + (a.alts.length > 1 ? " · or " + a.alts.slice(1).map(x => `${fmtY(x.yen)} (${php(x.yen)})`).join(", ") : "")); }
+}
 
 // --- the price display (calculator display; the keypad below types into it)
 let bigT = null, bigAt = 0;
@@ -187,7 +189,10 @@ function kshow() {
   $("display").classList.toggle("blank", !y || (typing && !kv));   // typed then erased: the old price is only a faint reference (2026-11-14 user)
   $("display").classList.toggle("typing", typing);
   $("note").innerHTML = typing ? `<span class="typing">Typing</span>` + (current() ? ` · now ${fmtY(current())}` : "") : noteHtml;
-  $("kuse").disabled = !(kv && +kv > 0);
+  updUse();
+}
+function updUse() {
+  $("kuse").disabled = !((kv && +kv > 0) || (!kact && hearP));
 }
 function kkey(k) {
   kact = true;
@@ -196,6 +201,7 @@ function kkey(k) {
   kshow();
 }
 function kuse() {
+  if (!kv && !kact && hearP) { applyHearing(); return; }   // nothing typed: apply the number being heard (no "yen")
   const y = +kv; if (!(y > 0)) return;
   kv = ""; kact = false;
   const r = recent.find(x => x.t === bigT);
@@ -300,12 +306,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114060003");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114060136");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114060003");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114060136");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
