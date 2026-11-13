@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114061123";
+import { Listener } from "./listener.js?v=20261114061437";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -298,7 +298,7 @@ function load() {
   })().catch(e => {
     loading = null; console.error(e);
     status("Couldn’t load the model."); progress(null);
-    warn("Check your internet connection and reload the page.");
+    warn("Couldn’t load. Reload the page.");
     $("start").disabled = false;
     throw e;
   });
@@ -330,12 +330,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114061123");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114061437");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114061123");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114061437");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
@@ -345,9 +345,9 @@ async function startMic() {
     $("lv").style.width = Math.round(Math.min(1, Math.max(0, (20 * Math.log10(pk + 1e-6) + 60) / 60)) * 100) + "%";
     quiet = pk < 0.003 ? quiet + 1 : 0;                       // ~10 s of near silence
     L.push(e.data.samples).then(() => {
-      if (L.dropped > behind) { behind = L.dropped; warn("This phone is falling behind. Close other apps or tabs."); }
-      else if (quiet > 60) warn("It’s very quiet. Speak closer to the phone.");
-      else if ($("warn").textContent.startsWith("It’s very quiet")) warn("");
+      if (L.dropped > behind) { behind = L.dropped; warn("Falling behind…"); }
+      else if (quiet > 60) warn("Very quiet…");
+      else if ($("warn").textContent.startsWith("Very quiet")) warn("");
     });
   };
   src.connect(node);
@@ -374,11 +374,11 @@ $("start").onclick = async () => {
   catch (e) {
     console.error(e);
     if (stream || ctx) stopMic();
-    if (!L) { status("Couldn’t load the model."); warn("Check your internet connection and reload the page."); return; }
+    if (!L) { status("Couldn’t load the model."); warn("Couldn’t load. Reload the page."); return; }
     const denied = e && (e.name === "NotAllowedError" || e.name === "SecurityError");
     status("Microphone unavailable");
-    warn(denied ? "Microphone access was blocked. Allow it for this site in your browser settings, then try again."
-                : `The microphone couldn’t start (${e.message || e}).`);
+    warn(denied ? "Mic blocked. Allow it in browser settings."
+                : `Mic couldn’t start (${e.message || e}).`);
   }
   finally { busy = false; }
 };
@@ -403,7 +403,7 @@ $("file").onchange = async e => {
     }
     status(`Finished the file (${clock(x.length / 16000)})`);
   } catch (err) {
-    console.error(err); status("Couldn’t read that file"); warn("Try a different audio file (mp3, m4a, wav).");
+    console.error(err); status("Couldn’t read that file"); warn("Couldn’t read that file.");
   } finally { e.target.value = ""; }
 };
 
