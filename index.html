@@ -31,15 +31,15 @@ button:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid
 #start{height:48px;min-width:6.4rem;padding:0 14px;border-radius:12px;border:0;background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:1rem;cursor:pointer;white-space:nowrap}
 #start.stop{background:transparent;color:var(--live);border:2px solid var(--live)}
 #start:disabled{opacity:.5}
-.status{display:flex;align-items:center;gap:8px;min-width:0;height:48px;box-sizing:border-box;padding:0 12px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:.8rem;color:var(--muted);line-height:1.25}
-.status.live{border-color:color-mix(in srgb,var(--live) 45%,var(--line));color:var(--fg);font-weight:600;font-size:.9rem}
+.status{display:flex;align-items:center;gap:8px;min-width:0;height:48px;box-sizing:border-box;padding:0 2px;font-size:.8rem;color:var(--muted);line-height:1.25}   /* no box (2026-11-14 user) */
+.status.live{color:var(--fg);font-weight:600;font-size:.9rem}
 #state,#warn{flex:none;max-width:100%;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 #warn{color:var(--warn);font-weight:600}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:none}
 .dot.on{background:var(--live);animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.35}}
 .status{flex-wrap:wrap;align-content:center;row-gap:5px}
-.meter{flex:0 0 100%;height:5px;border-radius:3px;background:var(--line);overflow:hidden}   /* plain bar across the whole status box, under the text (2026-11-14 user) */
+.meter{flex:0 0 100%;height:4px;border-radius:3px;background:var(--line);overflow:hidden}   /* plain bar across the whole status box, under the text (2026-11-14 user) */
 .meter i{display:block;height:100%;width:0;background:var(--ok);border-radius:3px;transition:width .08s linear}
 .prog{margin-left:auto;width:3rem;height:6px;border-radius:3px;background:var(--line);overflow:hidden;flex:none}
 .prog i{display:block;height:100%;width:0;background:var(--accent)}
@@ -203,6 +203,6 @@ footer{color:var(--faint);font-size:.8rem;text-align:center}
     <footer>Experimental</footer>
   </div>
 </div>
-<script type="module" src="app_en.js?v=20261114060651"></script>
+<script type="module" src="app_en.js?v=20261114060827"></script>
 </body>
 </html>
