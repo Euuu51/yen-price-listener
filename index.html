@@ -47,10 +47,12 @@ header p{margin:4px 0 0;color:var(--muted)}
 .hearing.on{cursor:pointer;color:var(--muted);border-color:var(--peso)}
 .hearing.on .hk{visibility:visible;color:var(--peso)}
 .hearing .hp{color:var(--peso)}
-.yen{font-size:1.7rem;font-weight:700;line-height:1.2;height:1.2em;white-space:nowrap}
-.php{font-size:clamp(2.2rem,13vw,3.4rem);font-weight:800;color:var(--peso);line-height:1.1;height:1.1em;letter-spacing:-.02em;white-space:nowrap}
+.yen,.php{font-size:clamp(2rem,11vw,2.8rem);font-weight:800;line-height:1.15;height:1.15em;letter-spacing:-.01em;white-space:nowrap}
+.php{color:var(--peso)}
 .blank .yen,.blank .php{color:var(--faint)}
-.rateline{color:var(--muted);font-size:.9rem;height:1.4em;margin-top:2px}
+.rateline{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.9rem;height:2rem;white-space:pre}
+.rateline .arr{width:1.4rem;height:1.6rem;color:var(--peso);flex:none;margin-left:.3rem}
+.rateline span{font-size:1.05rem;font-weight:600}
 .note{height:2.2rem;margin-top:8px;display:flex;align-items:center;font-size:.9rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .note .badge{margin:0}
 .heard{font-family:var(--mono);overflow:hidden;text-overflow:ellipsis}
@@ -135,8 +137,8 @@ main.typing{padding-bottom:26rem}
   <button class="hearing num" id="hearing"><span class="hl"><span>Hearing</span><span class="hk">Tap to keep if “yen” was missed</span></span><span class="hv" id="hv">…</span></button>
   <div id="price" class="blank">
     <div class="yen num" id="yen">¥ —</div>
-    <div class="php num" id="php">₱ —</div>
     <div class="rateline num" id="rateline"></div>
+    <div class="php num" id="php">₱ —</div>
     <div class="note" id="note">Say a price and it shows here.</div>
     <div class="alts" id="alts"></div>
   </div>
@@ -186,6 +188,6 @@ main.typing{padding-bottom:26rem}
   <div class="kact"><button id="kcancel">Cancel</button><button class="use" id="kuse" disabled>Use this price</button></div>
 </div>
 </main>
-<script type="module" src="app_en.js?v=20261114053429"></script>
+<script type="module" src="app_en.js?v=20261114053744"></script>
 </body>
 </html>

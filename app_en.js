@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114053429";
+import { Listener } from "./listener.js?v=20261114053744";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -17,12 +17,16 @@ $("rate").onchange = () => {
   rate = v; try { localStorage.setItem("rate", rate); } catch {}
   if (L) L.rate = rate;
   const r = recent.find(x => x.t === bigT);
-  if (r) { const y = r.picked ?? r.confirmed ?? r.yen; $("php").textContent = php(y); $("rateline").textContent = `at ₱${rate} per ¥1`; }
+  if (r) { const y = r.picked ?? r.confirmed ?? r.yen; $("php").textContent = php(y); } setRateLine();
 };
 
+// the arrow between yen and pesos carries the rate: ¥ … ↓ ×0.44 … ₱ (2026-11-14 user: show the "this became that" flow)
+const ARROW = `<svg class="arr" viewBox="0 0 24 28" aria-hidden="true"><path d="M12 2v22M3 15l9 9 9-9" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+function setRateLine() { $("rateline").innerHTML = `${ARROW}<span>× ${rate}</span>`; }
 const fmtY = v => "¥" + v.toLocaleString("en-US");
 const fmtP = v => "₱" + (Math.round(v * 100) / 100).toLocaleString("en-US", { maximumFractionDigits: 2 });
 const php = v => fmtP(v * rate);
+setRateLine();
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 // --- time labels: wall clock when listening live, m:ss into the file otherwise
@@ -63,7 +67,7 @@ let bigT = null, bigAt = 0;
 function showLatest(y, words, t) {
   bigT = t; bigAt = Date.now();
   $("price").classList.remove("blank");
-  $("yen").textContent = fmtY(y); $("php").textContent = php(y); $("rateline").textContent = `at ₱${rate} per ¥1`;
+  $("yen").textContent = fmtY(y); $("php").textContent = php(y);
   note("");                                                    // no "Heard: …" line (2026-11-14, user: not needed)
   setAlts([]);
   const c = $("latest"); c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash");
@@ -119,7 +123,7 @@ $("clear").onclick = () => {
   $("hist").innerHTML = ""; $("hempty").hidden = false; $("clear").hidden = true;
   rowOf.clear(); recent.length = 0;
   bigT = null; bigAt = 0; tick();
-  $("price").classList.add("blank"); $("yen").textContent = "¥ —"; $("php").textContent = "₱ —"; $("rateline").textContent = "";
+  $("price").classList.add("blank"); $("yen").textContent = "¥ —"; $("php").textContent = "₱ —";
   note("Say a price and it shows here."); setAlts([]);
 };
 
@@ -182,7 +186,6 @@ function kshow() {
   $("yen").textContent = shown ? fmtY(shown) : "¥ —"; $("php").textContent = shown ? php(shown) : "₱ —";
   $("yen").classList.toggle("ph", !kv); $("php").classList.toggle("ph", !kv);
   $("price").classList.remove("blank");
-  $("rateline").textContent = `at ₱${rate} per ¥1`;
   $("kuse").disabled = !(y > 0);
 }
 function kopen() {
@@ -190,7 +193,7 @@ function kopen() {
   kv = "";
   const r = recent.find(x => x.t === bigT);
   kbase = r ? (r.picked ?? r.confirmed ?? r.yen) : 0;
-  kprev = { yen: $("yen").textContent, php: $("php").textContent, rate: $("rateline").textContent, blank: $("price").classList.contains("blank") };
+  kprev = { yen: $("yen").textContent, php: $("php").textContent, blank: $("price").classList.contains("blank") };
   document.querySelector("main").classList.add("typing");
   $("latest").classList.add("editing");
   $("keypad").hidden = $("kback").hidden = false;
@@ -207,7 +210,7 @@ function kend() {
 function kclose() {                                // cancel: put the card back as it was
   if ($("keypad").hidden) return;
   kend();
-  if (kprev) { $("yen").textContent = kprev.yen; $("php").textContent = kprev.php; $("rateline").textContent = kprev.rate; $("price").classList.toggle("blank", kprev.blank); }
+  if (kprev) { $("yen").textContent = kprev.yen; $("php").textContent = kprev.php; $("price").classList.toggle("blank", kprev.blank); }
 }
 function kkey(k) {
   if (k === "del") kv = kv.slice(0, -1);
@@ -317,12 +320,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114053429");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114053744");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114053429");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114053744");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
