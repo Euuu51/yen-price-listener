@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114060536";
+import { Listener } from "./listener.js?v=20261114060651";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -36,7 +36,6 @@ const stamp = t => fileMode ? clock(t) : new Date(wall0 + t * 1000).toLocaleTime
 // --- status line
 function status(text, live = false) { $("state").textContent = text; $("dot").classList.toggle("on", live); $("statusbox").classList.toggle("live", live); }
 function progress(f) { $("prog").hidden = f == null; if (f != null) $("pv").style.width = Math.round(f * 100) + "%"; }
-const bars = () => [...$("meter").children];
 function warn(text) { $("warn").textContent = text || ""; $("warn").hidden = !text; $("state").hidden = !!text; }   // a warning takes the status text's place (same slot)
 
 // --- "hearing…" (number being spoken, before "yen"). Shows the pesos too, so a missed "yen" still gives the seller
@@ -308,20 +307,19 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114060536");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114060651");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114060536");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114060651");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
   let quiet = 0, behind = 0;
   node.port.onmessage = e => {
     const pk = e.data.peak;
-    const lvl = Math.min(1, Math.max(0, (20 * Math.log10(pk + 1e-6) + 60) / 60)), n = Math.round(lvl * 5);
-    bars().forEach((b, i) => b.classList.toggle("on", i < n));
+    $("lv").style.width = Math.round(Math.min(1, Math.max(0, (20 * Math.log10(pk + 1e-6) + 60) / 60)) * 100) + "%";
     quiet = pk < 0.003 ? quiet + 1 : 0;                       // ~10 s of near silence
     L.push(e.data.samples).then(() => {
       if (L.dropped > behind) { behind = L.dropped; warn("This phone is falling behind. Close other apps or tabs."); }
