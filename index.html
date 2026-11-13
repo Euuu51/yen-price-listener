@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en" data-model="model">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<meta name="description" content="Hears prices like “four thousand yen” in a live stream and shows them in pesos. Runs on your phone.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d4f91'/%3E%3Ctext x='32' y='46' font-size='40' font-family='system-ui,sans-serif' font-weight='700' fill='white' text-anchor='middle'%3E%C2%A5%3C/text%3E%3C/svg%3E">
+<title>Yen Price Listener</title>
+<style>
+:root{--bg:#f3f4f6;--card:#fff;--fg:#151a23;--muted:#5b6574;--faint:#8d97a6;--line:#dfe3e9;--accent:#1d4f91;--accent-fg:#fff;--peso:#1d4f91;--ok:#17703a;--ok-bg:#e6f4ea;--warn:#8a5a00;--warn-bg:#fff4dc;--live:#c62828;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1318;--card:#181e26;--fg:#e8ecf2;--muted:#a3adbb;--faint:#6c7685;--line:#2a323e;--accent:#8fb8f0;--accent-fg:#0f1318;--peso:#8fb8f0;--ok:#86d9a0;--ok-bg:#163222;--warn:#f0c26b;--warn-bg:#33270f;--live:#ff6b6b}}
+:root[data-theme="dark"]{--bg:#0f1318;--card:#181e26;--fg:#e8ecf2;--muted:#a3adbb;--faint:#6c7685;--line:#2a323e;--accent:#8fb8f0;--accent-fg:#0f1318;--peso:#8fb8f0;--ok:#86d9a0;--ok-bg:#163222;--warn:#f0c26b;--warn-bg:#33270f;--live:#ff6b6b}
+html{font-size:18px;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);margin:0;line-height:1.45}
+main{max-width:34rem;margin:0 auto;padding:20px max(16px,env(safe-area-inset-right)) 56px max(16px,env(safe-area-inset-left));display:grid;gap:16px}
+main>*{min-width:0}
+header h1{font-size:1.5rem;margin:0;letter-spacing:-.01em}
+header p{margin:4px 0 0;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.num{font-variant-numeric:tabular-nums}
+
+/* Start / status */
+#start{width:100%;font:inherit;font-size:1.3rem;font-weight:700;min-height:68px;border-radius:14px;border:0;background:var(--accent);color:var(--accent-fg);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
+#start:disabled{opacity:.55;cursor:default}
+#start.stop{background:transparent;color:var(--fg);border:2px solid var(--line)}
+#start:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.status{display:flex;align-items:center;gap:10px;margin-top:10px;color:var(--muted);font-size:.95rem;min-height:1.6em}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--faint);flex:none}
+.dot.on{background:var(--live);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.meter{flex:1;min-width:3rem;height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--ok);transition:width .1s}
+.warnbox{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--warn-bg);color:var(--warn);font-size:.95rem}
+.warnbox:empty{display:none}
+
+/* Latest price */
+.latest .label{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:.9rem}
+.hearing{min-height:1.7em;color:var(--faint);font-size:1.15rem;font-weight:600;visibility:hidden}
+.hearing.on{visibility:visible}
+.yen{font-size:3.2rem;font-weight:800;line-height:1.1;letter-spacing:-.02em}
+.php{font-size:2.3rem;font-weight:700;color:var(--peso);line-height:1.15}
+.empty{color:var(--faint);font-size:1.15rem;padding:14px 0}
+.heard{font-family:var(--mono);font-size:.85rem;color:var(--muted);margin-top:8px;overflow-wrap:anywhere}
+.latest.flash{animation:flash 1s ease-out}
+@keyframes flash{from{background:color-mix(in srgb,var(--ok) 20%,var(--card))}to{background:var(--card)}}
+@media (prefers-reduced-motion: reduce){.latest.flash,.dot.on{animation:none}}
+.badge{display:inline-block;margin-top:10px;padding:6px 10px;border-radius:8px;background:var(--ok-bg);color:var(--ok);font-weight:600;font-size:.95rem}
+.alts{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.alts:empty{display:none}
+.alts .h{color:var(--muted);font-size:.9rem;margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:1.1rem;white-space:nowrap}
+.chip .p{color:var(--peso)}
+
+/* History */
+.hhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.hhead h2{font-size:1.05rem;margin:0}
+.link{font:inherit;font-size:.95rem;background:none;border:0;color:var(--accent);padding:8px 4px;cursor:pointer;min-height:44px}
+ol{list-style:none;margin:0;padding:0}
+li{display:grid;grid-template-columns:4.3rem 1fr;gap:4px 10px;padding:10px 0;border-top:1px solid var(--line)}
+li:first-child{border-top:0}
+li .t{color:var(--muted);font-size:.9rem;padding-top:.2em;white-space:nowrap}
+li .v{font-size:1.25rem;font-weight:700}
+li .v .p{color:var(--peso);font-weight:600}
+li .sub{grid-column:2;color:var(--muted);font-size:.9rem}
+li .sub.ok{color:var(--ok);font-weight:600}
+li.soft .v{color:var(--muted);font-weight:500;font-size:1.1rem}
+li .was{text-decoration:line-through}
+#hempty{color:var(--faint);padding:6px 0}
+
+/* Settings / about */
+details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 16px}
+summary{cursor:pointer;padding:14px 0;font-weight:600;list-style-position:inside;min-height:24px}
+details[open] summary{border-bottom:1px solid var(--line);margin-bottom:12px}
+details>div{padding-bottom:16px;display:grid;gap:14px}
+.field{display:grid;gap:6px}
+.field>span{font-weight:600}
+.field small{color:var(--muted)}
+.rate{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:1.1rem}
+input[type=number]{width:6rem;font:inherit;font-size:1.1rem;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+input[type=file]{font:inherit;font-size:.95rem;max-width:100%}
+.about ul{margin:0;padding-left:1.2em;display:grid;gap:8px}
+.about p{margin:0}
+footer{color:var(--faint);font-size:.85rem;text-align:center}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+</head>
+<body>
+<main>
+<header>
+  <h1>Yen Price Listener</h1>
+  <p>Listens for prices like “four thousand yen” and shows them in pesos — live.</p>
+</header>
+
+<section class="card">
+  <button id="start" disabled>🎤 Start listening</button>
+  <div class="status"><span class="dot" id="dot"></span><span id="state">Loading…</span><div class="meter" id="meter" hidden><i id="lv"></i></div></div>
+  <div class="warnbox" id="warn" role="alert"></div>
+</section>
+
+<section class="card latest" id="latest" aria-live="polite">
+  <div class="label"><span>Latest price</span><span id="ago" class="num"></span></div>
+  <div class="hearing num" id="hearing">Hearing <span></span>…</div>
+  <div id="price" hidden>
+    <div class="yen num" id="yen"></div>
+    <div class="php num" id="php"></div>
+    <div id="conf"></div>
+    <div class="heard" id="heard"></div>
+    <div class="alts" id="alts"></div>
+  </div>
+  <div class="empty" id="empty">Prices will appear here.</div>
+</section>
+
+<section class="card">
+  <div class="hhead"><h2>History</h2><button class="link" id="clear" hidden>Clear</button></div>
+  <div id="hempty">Nothing yet.</div>
+  <ol id="hist"></ol>
+</section>
+
+<details>
+  <summary>Settings</summary>
+  <div>
+    <label class="field"><span>Exchange rate</span>
+      <span class="rate">¥1 = ₱<input type="number" id="rate" step="0.01" min="0" inputmode="decimal"></span>
+      <small>Sellers in these streams usually use ₱0.44.</small></label>
+    <label class="field"><span>Try a recording instead</span>
+      <input type="file" id="file" accept="audio/*">
+      <small>Pick an audio file on your device. It is read here, not uploaded.</small></label>
+  </div>
+</details>
+
+<details class="about">
+  <summary>Tips &amp; privacy</summary>
+  <div>
+    <ul>
+      <li>Play the stream out loud and keep your phone near the speaker. A second device for the stream works best.</li>
+      <li>It understands prices said in English that end with “yen”, like “two thousand five hundred yen”.</li>
+      <li>When it isn’t sure, it shows other possible prices. If the seller then says the peso amount, it uses that to pick the right one (✓).</li>
+      <li>It can mishear. Always check the price before you buy.</li>
+    </ul>
+    <p><b>Privacy:</b> everything runs on your phone. No audio is uploaded or saved. The first visit downloads a 19 MB model.</p>
+  </div>
+</details>
+<footer>Experimental</footer>
+</main>
+<script type="module" src="app_en.js"></script>
+</body>
+</html>
