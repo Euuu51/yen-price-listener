@@ -146,14 +146,18 @@ async function fetchProgress(url) {
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const total = +r.headers.get("content-length") || 0;
   if (!r.body || !total) return new Uint8Array(await r.arrayBuffer());
-  const rd = r.body.getReader(), out = new Uint8Array(total);
+  // content-length can be the compressed size (GitHub Pages gzips the model), so don't size the buffer from it (2026-11-14)
+  const rd = r.body.getReader(), parts = [];
   let n = 0;
   for (;;) {
     const { done, value } = await rd.read();
     if (done) break;
-    out.set(value, n); n += value.length;
-    status(`Downloading the model… ${Math.round(n / total * 100)}%`);
+    parts.push(value); n += value.length;
+    status(`Downloading the model… ${Math.min(99, Math.round(n / total * 100))}%`);
   }
+  const out = new Uint8Array(n);
+  let o = 0;
+  for (const v of parts) { out.set(v, o); o += v.length; }
   return out;
 }
 function load() {
@@ -246,6 +250,7 @@ $("start").onclick = async () => {
   catch (e) {
     console.error(e);
     if (stream || ctx) stopMic();
+    if (!L) { status("Couldn’t load the model."); warn("Check your internet connection and reload the page."); return; }
     const denied = e && (e.name === "NotAllowedError" || e.name === "SecurityError");
     status("Microphone unavailable");
     warn(denied ? "Microphone access was blocked. Allow it for this site in your browser settings, then try again."
