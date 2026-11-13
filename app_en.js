@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114055204";
+import { Listener } from "./listener.js?v=20261114060003";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -65,7 +65,7 @@ $("hearing").onclick = () => {
 let bigT = null, bigAt = 0;
 function showLatest(y, words, t) {
   bigT = t; bigAt = Date.now();
-  kv = "";                                                     // a new price ends any typing in progress
+  kv = ""; kact = false;                                                     // a new price ends any typing in progress
   note("");                                                    // no "Heard: …" line (2026-11-14, user: not needed)
   kshow();
   setAlts([]);
@@ -80,7 +80,7 @@ function tick() {
 }
 setInterval(tick, 1000);
 let noteHtml = "Say a price, or type it below.";
-function note(html) { noteHtml = html; if (!kv) $("note").innerHTML = html; }
+function note(html) { noteHtml = html; if (!kact) $("note").innerHTML = html; }
 function setAlts(list, label = "Not sure. Tap if it was:") {
   $("alts").innerHTML = list.length ? `<div class="h">${label}</div><div class="chips">${list.map(chip).join("")}</div>`
                                     : `<div class="h">Other possible prices</div><div class="none">None</div>`;
@@ -93,7 +93,7 @@ $("alts").addEventListener("click", e => {
   if (!r) return;
   const was = r.picked ?? r.yen;
   r.picked = y;
-  kv = ""; kshow();
+  kv = ""; kact = false; kshow();
   note(`You picked this · first heard ${fmtY(r.yen)}`);
   const others = (r.alts || []).filter(v => v !== y);
   if (!others.includes(was)) others.unshift(was);
@@ -124,7 +124,7 @@ $("clear").onclick = () => {
   $("hist").innerHTML = ""; $("hempty").hidden = false; $("clear").hidden = true;
   rowOf.clear(); recent.length = 0;
   bigT = null; bigAt = 0; tick();
-  kv = ""; note("Say a price, or type it below."); kshow(); setAlts([]);
+  kv = ""; kact = false; note("Say a price, or type it below."); kshow(); setAlts([]);
 };
 
 // --- events from the listener
@@ -169,7 +169,7 @@ function onPeso(e) {
     r.li.querySelector(".v").innerHTML = pair(c);
     setSub(r.li, `✓ You said ${fmtP(e.php)}` + (c !== r.yen ? ` · first heard <span class="was">${fmtY(r.yen)}</span>` : ""), "ok");
     if (bigT === r.t) {
-      kv = ""; kshow(); setAlts([]);
+      kv = ""; kact = false; kshow(); setAlts([]);
       note(`<span class="badge">✓ Matches the ${esc(fmtP(e.php))} you said</span>`);
     }
     return;
@@ -180,23 +180,24 @@ function onPeso(e) {
 function onWord() {}
 
 // --- keypad (always on screen; 2026-11-14 user). Typing shows in the display; "Use this price" replaces the price on screen
-let kv = "";
+let kv = "", kact = false;                       // kact: typing has started (stays on after ⌫ back to empty, so the old price shows faint)
 function kshow() {
-  const typing = !!kv, y = typing ? +kv : current();
+  const typing = kact, y = kv ? +kv : current();
   $("yen").textContent = y ? fmtY(y) : "¥ —"; $("php").textContent = y ? php(y) : "₱ —";
-  $("display").classList.toggle("blank", !y);
+  $("display").classList.toggle("blank", !y || (typing && !kv));   // typed then erased: the old price is only a faint reference (2026-11-14 user)
   $("display").classList.toggle("typing", typing);
   $("note").innerHTML = typing ? `<span class="typing">Typing</span>` + (current() ? ` · now ${fmtY(current())}` : "") : noteHtml;
-  $("kuse").disabled = !(typing && y > 0);
+  $("kuse").disabled = !(kv && +kv > 0);
 }
 function kkey(k) {
+  kact = true;
   if (k === "del") kv = kv.slice(0, -1);
   else if (kv.length + k.length <= 9 && !(kv === "" && k.startsWith("0"))) kv += k;
   kshow();
 }
 function kuse() {
   const y = +kv; if (!(y > 0)) return;
-  kv = "";
+  kv = ""; kact = false;
   const r = recent.find(x => x.t === bigT);
   if (r) {                                         // a price is on screen: this corrects it
     r.picked = y;
@@ -214,14 +215,14 @@ function kuse() {
   note("Typed");
 }
 $("keypad").addEventListener("click", e => { const b = e.target.closest("button[data-k]"); if (b) kkey(b.dataset.k); });
-$("kclr").onclick = () => { kv = ""; kshow(); };
+$("kclr").onclick = () => { kv = ""; kact = false; kshow(); };
 $("kuse").onclick = kuse;
 document.addEventListener("keydown", e => {
   if (!$("histview").hidden || e.target.closest("input")) return;
   if (/^[0-9]$/.test(e.key)) kkey(e.key);
   else if (e.key === "Backspace") kkey("del");
   else if (e.key === "Enter") kuse();
-  else if (e.key === "Escape") { kv = ""; kshow(); }
+  else if (e.key === "Escape") { kv = ""; kact = false; kshow(); }
   else return;
   e.preventDefault();
 });
@@ -299,12 +300,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114055204");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114060003");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114055204");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114060003");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
