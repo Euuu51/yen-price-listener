@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114053020";
+import { Listener } from "./listener.js?v=20261114053226";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -176,14 +176,19 @@ function onPeso(e) {
 function onWord() {}
 
 // --- typing a price (calculator-style, 2026-11-14 user: "tap and type the yen like a calculator")
-let kv = "";
+let kv = "", kbase = 0;                          // kbase: the price on screen when the keypad opened, shown faintly until a key is pressed
 function kshow() {
-  const y = +kv || 0;
-  $("ky").textContent = fmtY(y); $("kp").textContent = php(y);
+  const y = +kv || 0, shown = kv ? y : kbase;
+  $("ky").textContent = fmtY(shown); $("kp").textContent = php(shown);
   $("ky").classList.toggle("ph", !kv); $("kp").classList.toggle("ph", !kv);
   $("kuse").disabled = !(y > 0);
 }
-function kopen() { kv = ""; kshow(); $("keypad").hidden = $("kback").hidden = false; }
+function kopen() {
+  kv = "";
+  const r = recent.find(x => x.t === bigT);
+  kbase = r ? (r.picked ?? r.confirmed ?? r.yen) : 0;
+  kshow(); $("keypad").hidden = $("kback").hidden = false;
+}
 function kclose() { $("keypad").hidden = $("kback").hidden = true; }
 function kkey(k) {
   if (k === "del") kv = kv.slice(0, -1);
@@ -284,12 +289,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114053020");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114053226");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114053020");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114053226");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
