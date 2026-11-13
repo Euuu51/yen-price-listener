@@ -1,7 +1,7 @@
 // 迷ったら候補を並べる（2026-11-13、train/nbest.py と同じ）。
 // 値段の手がかりのフレームの前 WIN_BACK 秒〜後 WIN_FWD 秒を CTC の前置ビーム探索で読み直し、上位の読みを値段にまとめる。
-import { NUMWORDS, priceOfRun } from "./words.js?v=20261114052928";
-import { SUFFIX, SUFFIX_GAP } from "./listener.js?v=20261114052928";
+import { NUMWORDS, priceOfRun } from "./words.js?v=20261114053020";
+import { SUFFIX, SUFFIX_GAP } from "./listener.js?v=20261114053020";
 
 export const WIN_BACK = 4.0, WIN_FWD = 0.3, WIDTH = 12, PRUNE = 1e-3;
 const NEG = -1e30;
