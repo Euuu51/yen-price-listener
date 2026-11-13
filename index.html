@@ -102,7 +102,7 @@ footer{color:var(--faint);font-size:.85rem;text-align:center}
 /* Typing a price (calculator-style bottom sheet; overlays the page so nothing moves) */
 .startrow{display:grid;grid-template-columns:1fr 68px;gap:10px}
 #type{font:inherit;font-size:1.6rem;min-height:68px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
-#php,#yen{cursor:pointer}
+main{cursor:pointer}main button,main a,main input,main select,main summary,main details{cursor:auto}main button,main summary{cursor:pointer}
 .backdrop{position:fixed;inset:0;background:transparent;z-index:20}
 /* while typing, the price card itself is the display: it is outlined and the keys sit below it */
 .latest.editing{outline:3px solid var(--peso);outline-offset:2px}
@@ -171,7 +171,7 @@ main.typing{padding-bottom:26rem}
       <li>Say “yen” right after the number, with a clear “y”. A pause before it, a slow “yen” or “en” is often missed.</li>
       <li>While you speak, the number shows in a dashed box. If “yen” was missed, tap it to keep the price.</li>
       <li>If it isn’t sure, it shows other possible prices. Tap the right one.</li>
-      <li>Tap ⌨︎ or the price to type it or fix it yourself.</li>
+      <li>Tap anywhere on the page (or ⌨︎) to type a price or fix it yourself.</li>
       <li>Check the number before you say it.</li>
       <li>Runs on your phone. No audio is uploaded or saved.</li>
     </ul>
@@ -189,6 +189,6 @@ main.typing{padding-bottom:26rem}
   <div class="kact"><button id="kcancel">Cancel</button><button class="use" id="kuse" disabled>Use this price</button></div>
 </div>
 </main>
-<script type="module" src="app_en.js?v=20261114053823"></script>
+<script type="module" src="app_en.js?v=20261114054124"></script>
 </body>
 </html>
