@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114054507";
+import { Listener } from "./listener.js?v=20261114055204";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -16,8 +16,7 @@ $("rate").onchange = () => {
   if (!(v > 0)) { $("rate").value = rate; return; }
   rate = v; try { localStorage.setItem("rate", rate); } catch {}
   if (L) L.rate = rate;
-  const r = recent.find(x => x.t === bigT);
-  if (r) { const y = r.picked ?? r.confirmed ?? r.yen; $("php").textContent = php(y); } setRateLine();
+  setRateLine(); kshow(); onPartial(hearP);
 };
 
 // the arrow between yen and pesos carries the rate: ¥ … ↓ ×0.44 … ₱ (2026-11-14 user: show the "this became that" flow)
@@ -53,7 +52,7 @@ function onPartial(p) {
 }
 setAlts([]);
 $("hearing").onclick = () => {
-  const p = hearP; if (!p) { kopen(); return; }                    // nothing being heard: it is a plain tap
+  const p = hearP; if (!p) return;
   const li = addRow(p.t, pair(p.yen), "Applied by tap (no “yen” heard)");
   rowOf.set(p.t, li);
   recent.push({ t: p.t, yen: p.yen, all: null, li, confirmed: null, manual: true });
@@ -62,24 +61,26 @@ $("hearing").onclick = () => {
   if (a) { onAlts({ t: p.t, ...a, tentative: false }); setSub(li, "Applied by tap (no “yen” heard)" + (a.alts.length > 1 ? " · or " + a.alts.slice(1).map(x => `${fmtY(x.yen)} (${php(x.yen)})`).join(", ") : "")); }
 };
 
-// --- latest price card
+// --- the price display (calculator display; the keypad below types into it)
 let bigT = null, bigAt = 0;
 function showLatest(y, words, t) {
   bigT = t; bigAt = Date.now();
-  $("price").classList.remove("blank");
-  $("yen").textContent = fmtY(y); $("php").textContent = php(y);
+  kv = "";                                                     // a new price ends any typing in progress
   note("");                                                    // no "Heard: …" line (2026-11-14, user: not needed)
+  kshow();
   setAlts([]);
-  const c = $("latest"); c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash");
+  const c = $("display"); c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash");
   onPartial(null); tick();
 }
+const current = () => { const r = recent.find(x => x.t === bigT); return r ? (r.picked ?? r.confirmed ?? r.yen) : 0; };
 function tick() {
   if (!bigAt) { $("ago").textContent = ""; return; }
   const s = Math.round((Date.now() - bigAt) / 1000);
   $("ago").textContent = s < 5 ? "just now" : s < 60 ? `${s} s ago` : s < 3600 ? `${Math.floor(s / 60)} min ago` : "";
 }
 setInterval(tick, 1000);
-function note(html) { $("note").innerHTML = html; }
+let noteHtml = "Say a price, or type it below.";
+function note(html) { noteHtml = html; if (!kv) $("note").innerHTML = html; }
 function setAlts(list, label = "Not sure. Tap if it was:") {
   $("alts").innerHTML = list.length ? `<div class="h">${label}</div><div class="chips">${list.map(chip).join("")}</div>`
                                     : `<div class="h">Other possible prices</div><div class="none">None</div>`;
@@ -92,7 +93,7 @@ $("alts").addEventListener("click", e => {
   if (!r) return;
   const was = r.picked ?? r.yen;
   r.picked = y;
-  $("yen").textContent = fmtY(y); $("php").textContent = php(y);
+  kv = ""; kshow();
   note(`You picked this · first heard ${fmtY(r.yen)}`);
   const others = (r.alts || []).filter(v => v !== y);
   if (!others.includes(was)) others.unshift(was);
@@ -123,8 +124,7 @@ $("clear").onclick = () => {
   $("hist").innerHTML = ""; $("hempty").hidden = false; $("clear").hidden = true;
   rowOf.clear(); recent.length = 0;
   bigT = null; bigAt = 0; tick();
-  $("price").classList.add("blank"); $("yen").textContent = "¥ —"; $("php").textContent = "₱ —";
-  note("Say a price and it shows here."); setAlts([]);
+  kv = ""; note("Say a price, or type it below."); kshow(); setAlts([]);
 };
 
 // --- events from the listener
@@ -169,7 +169,7 @@ function onPeso(e) {
     r.li.querySelector(".v").innerHTML = pair(c);
     setSub(r.li, `✓ You said ${fmtP(e.php)}` + (c !== r.yen ? ` · first heard <span class="was">${fmtY(r.yen)}</span>` : ""), "ok");
     if (bigT === r.t) {
-      $("yen").textContent = fmtY(c); $("php").textContent = php(c); setAlts([]);
+      kv = ""; kshow(); setAlts([]);
       note(`<span class="badge">✓ Matches the ${esc(fmtP(e.php))} you said</span>`);
     }
     return;
@@ -179,38 +179,15 @@ function onPeso(e) {
 
 function onWord() {}
 
-// --- typing a price (calculator-style, 2026-11-14 user: "tap and type the yen like a calculator")
-let kv = "", kbase = 0, kprev = null;             // the price card is the display while typing (2026-11-14 user: rewrite the price in place)
+// --- keypad (always on screen; 2026-11-14 user). Typing shows in the display; "Use this price" replaces the price on screen
+let kv = "";
 function kshow() {
-  const y = +kv || 0, shown = kv ? y : kbase;
-  $("yen").textContent = shown ? fmtY(shown) : "¥ —"; $("php").textContent = shown ? php(shown) : "₱ —";
-  $("yen").classList.toggle("ph", !kv); $("php").classList.toggle("ph", !kv);
-  $("price").classList.remove("blank");
-  $("kuse").disabled = !(y > 0);
-}
-function kopen() {
-  if (!$("keypad").hidden) return;
-  kv = "";
-  const r = recent.find(x => x.t === bigT);
-  kbase = r ? (r.picked ?? r.confirmed ?? r.yen) : 0;
-  kprev = { yen: $("yen").textContent, php: $("php").textContent, blank: $("price").classList.contains("blank") };
-  document.querySelector("main").classList.add("typing");
-  $("latest").classList.add("editing");
-  $("keypad").hidden = $("kback").hidden = false;
-  kshow();
-  const top = $("latest").getBoundingClientRect().top + scrollY - 12;
-  scrollTo({ top, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-}
-function kend() {
-  $("keypad").hidden = $("kback").hidden = true;
-  $("latest").classList.remove("editing");
-  $("yen").classList.remove("ph"); $("php").classList.remove("ph");
-  document.querySelector("main").classList.remove("typing");
-}
-function kclose() {                                // cancel: put the card back as it was
-  if ($("keypad").hidden) return;
-  kend();
-  if (kprev) { $("yen").textContent = kprev.yen; $("php").textContent = kprev.php; $("price").classList.toggle("blank", kprev.blank); }
+  const typing = !!kv, y = typing ? +kv : current();
+  $("yen").textContent = y ? fmtY(y) : "¥ —"; $("php").textContent = y ? php(y) : "₱ —";
+  $("display").classList.toggle("blank", !y);
+  $("display").classList.toggle("typing", typing);
+  $("note").innerHTML = typing ? `<span class="typing">Typing</span>` + (current() ? ` · now ${fmtY(current())}` : "") : noteHtml;
+  $("kuse").disabled = !(typing && y > 0);
 }
 function kkey(k) {
   if (k === "del") kv = kv.slice(0, -1);
@@ -219,14 +196,13 @@ function kkey(k) {
 }
 function kuse() {
   const y = +kv; if (!(y > 0)) return;
-  kend();
+  kv = "";
   const r = recent.find(x => x.t === bigT);
   if (r) {                                         // a price is on screen: this corrects it
     r.picked = y;
     r.li.querySelector(".v").innerHTML = pair(y);
     setSub(r.li, y !== r.yen ? `Typed · first heard <span class="was">${fmtY(r.yen)}</span>` : "Typed");
-    $("yen").textContent = fmtY(y); $("php").textContent = php(y);
-    note("Typed"); setAlts([]);
+    note("Typed"); kshow(); setAlts([]);
     return;
   }
   if (!wall0) wall0 = Date.now();
@@ -237,26 +213,23 @@ function kuse() {
   showLatest(y, "", t);
   note("Typed");
 }
-$("type").onclick = kopen;
-// any tap on a plain part of the page opens the keypad (2026-11-14 user); controls, the keypad itself and the folded sections keep their own taps
-document.addEventListener("click", e => {
-  if (!$("keypad").hidden) return;
-  if (e.target.closest("button, a, input, select, label, details, #keypad, #kback")) return;
-  if (getSelection && String(getSelection()).length) return;      // selecting text isn't a tap
-  kopen();
-});
-$("kback").onclick = $("kcancel").onclick = kclose;
+$("keypad").addEventListener("click", e => { const b = e.target.closest("button[data-k]"); if (b) kkey(b.dataset.k); });
+$("kclr").onclick = () => { kv = ""; kshow(); };
 $("kuse").onclick = kuse;
-$("keypad").querySelector(".keys").addEventListener("click", e => { const b = e.target.closest("button"); if (b) kkey(b.dataset.k); });
 document.addEventListener("keydown", e => {
-  if ($("keypad").hidden) return;
+  if (!$("histview").hidden || e.target.closest("input")) return;
   if (/^[0-9]$/.test(e.key)) kkey(e.key);
   else if (e.key === "Backspace") kkey("del");
   else if (e.key === "Enter") kuse();
-  else if (e.key === "Escape") kclose();
+  else if (e.key === "Escape") { kv = ""; kshow(); }
   else return;
   e.preventDefault();
 });
+kshow();
+
+// --- history screen: the only place you leave the calculator for
+$("histbtn").onclick = () => { $("histview").hidden = false; $("histview").scrollTop = 0; };
+$("back").onclick = () => { $("histview").hidden = true; };
 
 // --- model: load once when the page opens (on phones, loading after the tap loses the "user gesture" for audio)
 globalThis.__pl = { onPrice, onAlts, onPeso, onPartial };      // for headless UI tests
@@ -288,7 +261,7 @@ function load() {
     const buf = await fetchProgress(`${MODEL}/model.onnx`);
     status("Getting ready…");
     L = await Listener.create(ort, cfg, buf, { rate, yenr: YR, altr: ALTR, tent: TENT, onWord, onPrice, onPartial: p => { if (p) onPartial(p); }, onAlts, onPeso });   // a null (next word not a number, e.g. a misheard 'yen') doesn't clear it: it stays 8 s to be tapped
-    status("Ready. Tap Start, then say a price.");
+    status("Ready. Tap Start and say a price.");
     $("start").disabled = false;
     return L;
   })().catch(e => {
@@ -326,12 +299,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114054507");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114055204");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114054507");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114055204");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
@@ -358,7 +331,7 @@ function stopMic() {
   if (ctx) ctx.close();
   stream = ctx = null; running = false;
   status("Stopped"); $("meter").hidden = true; warn("");
-  $("start").textContent = "🎤 Start listening"; $("start").classList.remove("stop");
+  $("start").textContent = "🎤 Start"; $("start").classList.remove("stop");
   wake(false);
 }
 
