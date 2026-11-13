@@ -96,6 +96,25 @@ input[type=file]{font:inherit;font-size:.95rem;max-width:100%}
 .about ul{margin:0;padding-left:1.2em;display:grid;gap:2px}
 .about p{margin:0}
 footer{color:var(--faint);font-size:.85rem;text-align:center}
+/* Typing a price (calculator-style bottom sheet; overlays the page so nothing moves) */
+.startrow{display:grid;grid-template-columns:1fr 68px;gap:10px}
+#type{font:inherit;font-size:1.6rem;min-height:68px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
+#php,#yen{cursor:pointer}
+.backdrop{position:fixed;inset:0;background:color-mix(in srgb,var(--fg) 35%,transparent);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;margin:0 auto;max-width:34rem;background:var(--card);border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0;
+  padding:14px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:10px;box-shadow:0 -8px 30px color-mix(in srgb,var(--fg) 18%,transparent)}
+.kdisp{display:grid;gap:0}
+.kdisp .ky{font-size:1.7rem;font-weight:700;height:1.25em;white-space:nowrap;overflow:hidden}
+.kdisp .kp{font-size:clamp(2.2rem,13vw,3.2rem);font-weight:800;color:var(--peso);height:1.15em;line-height:1.15;white-space:nowrap;overflow:hidden}
+.kdisp .ky.ph,.kdisp .kp.ph{color:var(--faint)}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.keys button,.kact button{font:inherit;font-size:1.6rem;font-weight:600;height:58px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer;font-variant-numeric:tabular-nums}
+.keys button:active,.kact button:active{background:var(--line)}
+.kact{display:grid;grid-template-columns:1fr 2fr;gap:8px}
+.kact button{font-size:1.1rem}
+.kact .use{background:var(--accent);color:var(--accent-fg);border:0;font-weight:700}
+.kact .use:disabled{opacity:.45;cursor:default}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
 </head>
@@ -107,7 +126,7 @@ footer{color:var(--faint);font-size:.85rem;text-align:center}
 </header>
 
 <section class="card">
-  <button id="start" disabled>🎤 Start listening</button>
+  <div class="startrow"><button id="start" disabled>🎤 Start listening</button><button id="type" aria-label="Type a price">⌨︎</button></div>
   <div class="status"><span class="dot" id="dot"></span><span id="state">Loading…</span><span id="warn" role="alert" hidden></span><div class="meter" id="meter" hidden><i id="lv"></i></div></div>
 </section>
 
@@ -149,13 +168,25 @@ footer{color:var(--faint);font-size:.85rem;text-align:center}
       <li>Say “yen” right after the number, with a clear “y”. A pause before it, a slow “yen” or “en” is often missed.</li>
       <li>While you speak, the number shows in a dashed box. If “yen” was missed, tap it to keep the price.</li>
       <li>If it isn’t sure, it shows other possible prices. Tap the right one.</li>
+      <li>Tap ⌨︎ or the peso amount to type a price yourself.</li>
       <li>Check the number before you say it.</li>
       <li>Runs on your phone. No audio is uploaded or saved.</li>
     </ul>
   </div>
 </details>
 <footer>Experimental</footer>
+<div class="backdrop" id="kback" hidden></div>
+<div class="sheet" id="keypad" role="dialog" aria-label="Type a price in yen" hidden>
+  <div class="kdisp num"><div class="ky ph" id="ky">¥ 0</div><div class="kp ph" id="kp">₱ 0</div></div>
+  <div class="keys">
+    <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+    <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+    <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+    <button data-k="000">000</button><button data-k="0">0</button><button data-k="del" aria-label="Delete">⌫</button>
+  </div>
+  <div class="kact"><button id="kcancel">Cancel</button><button class="use" id="kuse" disabled>Use this price</button></div>
+</div>
 </main>
-<script type="module" src="app_en.js?v=20261114052348"></script>
+<script type="module" src="app_en.js?v=20261114052928"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114052348";
+import { Listener } from "./listener.js?v=20261114052928";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -175,6 +175,47 @@ function onPeso(e) {
 
 function onWord() {}
 
+// --- typing a price (calculator-style, 2026-11-14 user: "tap and type the yen like a calculator")
+let kv = "";
+function kshow() {
+  const y = +kv || 0;
+  $("ky").textContent = fmtY(y); $("kp").textContent = php(y);
+  $("ky").classList.toggle("ph", !kv); $("kp").classList.toggle("ph", !kv);
+  $("kuse").disabled = !(y > 0);
+}
+function kopen() { kv = ""; kshow(); $("keypad").hidden = $("kback").hidden = false; }
+function kclose() { $("keypad").hidden = $("kback").hidden = true; }
+function kkey(k) {
+  if (k === "del") kv = kv.slice(0, -1);
+  else if (kv.length + k.length <= 9 && !(kv === "" && k.startsWith("0"))) kv += k;
+  kshow();
+}
+function kuse() {
+  const y = +kv; if (!(y > 0)) return;
+  if (!wall0) wall0 = Date.now();
+  const t = fileMode ? 0 : (Date.now() - wall0) / 1000;
+  const li = addRow(t, pair(y), "Typed");
+  recent.push({ t, yen: y, all: null, li, confirmed: null, typed: true });
+  rowOf.set(t, li);
+  showLatest(y, "", t);
+  note("Typed");
+  kclose();
+}
+$("type").onclick = kopen;
+$("php").onclick = $("yen").onclick = kopen;
+$("kback").onclick = $("kcancel").onclick = kclose;
+$("kuse").onclick = kuse;
+$("keypad").querySelector(".keys").addEventListener("click", e => { const b = e.target.closest("button"); if (b) kkey(b.dataset.k); });
+document.addEventListener("keydown", e => {
+  if ($("keypad").hidden) return;
+  if (/^[0-9]$/.test(e.key)) kkey(e.key);
+  else if (e.key === "Backspace") kkey("del");
+  else if (e.key === "Enter") kuse();
+  else if (e.key === "Escape") kclose();
+  else return;
+  e.preventDefault();
+});
+
 // --- model: load once when the page opens (on phones, loading after the tap loses the "user gesture" for audio)
 globalThis.__pl = { onPrice, onAlts, onPeso, onPartial };      // for headless UI tests
 let L = null, loading = null;
@@ -243,12 +284,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114052348");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114052928");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114052348");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114052928");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
