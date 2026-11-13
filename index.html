@@ -60,15 +60,15 @@ header p{margin:4px 0 0;color:var(--muted)}
 .hhead h2{font-size:1.05rem;margin:0}
 .link{font:inherit;font-size:.95rem;background:none;border:0;color:var(--accent);padding:8px 4px;cursor:pointer;min-height:44px}
 ol{list-style:none;margin:0;padding:0}
-li{display:grid;grid-template-columns:4.3rem 1fr;gap:4px 10px;padding:10px 0;border-top:1px solid var(--line)}
-li:first-child{border-top:0}
-li .t{color:var(--muted);font-size:.9rem;padding-top:.2em;white-space:nowrap}
-li .v{font-size:1.25rem;font-weight:700}
-li .v .p{color:var(--peso);font-weight:600}
-li .sub{grid-column:2;color:var(--muted);font-size:.9rem}
-li .sub.ok{color:var(--ok);font-weight:600}
-li.soft .v{color:var(--muted);font-weight:500;font-size:1.1rem}
-li .was{text-decoration:line-through}
+#hist li{display:grid;grid-template-columns:4.3rem 1fr;gap:4px 10px;padding:10px 0;border-top:1px solid var(--line)}
+#hist li:first-child{border-top:0}
+#hist li .t{color:var(--muted);font-size:.9rem;padding-top:.2em;white-space:nowrap}
+#hist li .v{font-size:1.25rem;font-weight:700}
+#hist li .v .p{color:var(--peso);font-weight:600}
+#hist li .sub{grid-column:2;color:var(--muted);font-size:.9rem}
+#hist li .sub.ok{color:var(--ok);font-weight:600}
+#hist li.soft .v{color:var(--muted);font-weight:500;font-size:1.1rem}
+#hist li .was{text-decoration:line-through}
 #hempty{color:var(--faint);padding:6px 0}
 
 /* Settings / about */
@@ -82,7 +82,7 @@ details>div{padding-bottom:16px;display:grid;gap:14px}
 .rate{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:1.1rem}
 input[type=number]{width:6rem;font:inherit;font-size:1.1rem;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
 input[type=file]{font:inherit;font-size:.95rem;max-width:100%}
-.about ul{margin:0;padding-left:1.2em;display:grid;gap:8px}
+.about ul{margin:0;padding-left:1.2em;display:grid;gap:2px}
 .about p{margin:0}
 footer{color:var(--faint);font-size:.85rem;text-align:center}
 </style>
@@ -136,12 +136,12 @@ footer{color:var(--faint);font-size:.85rem;text-align:center}
   <summary>Tips &amp; privacy</summary>
   <div>
     <ul>
-      <li>Play the stream out loud and keep your phone near the speaker. A second device for the stream works best.</li>
-      <li>It understands prices said in English that end with “yen”, like “two thousand five hundred yen”.</li>
-      <li>When it isn’t sure, it shows other possible prices. If the seller then says the peso amount, it uses that to pick the right one (✓).</li>
-      <li>It can mishear. Always check the price before you buy.</li>
+      <li>Keep your phone near the speaker.</li>
+      <li>Works with English prices ending in “yen”.</li>
+      <li>If unsure, it lists other possible prices. A peso amount from the seller picks the right one (✓).</li>
+      <li>It can mishear. Check before you buy.</li>
+      <li>Runs on your phone. No audio is uploaded or saved.</li>
     </ul>
-    <p><b>Privacy:</b> everything runs on your phone. No audio is uploaded or saved. The first visit downloads a 19 MB model.</p>
   </div>
 </details>
 <footer>Experimental</footer>
