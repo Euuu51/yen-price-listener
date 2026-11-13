@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114060136";
+import { Listener } from "./listener.js?v=20261114060455";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -34,7 +34,9 @@ const clock = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(
 const stamp = t => fileMode ? clock(t) : new Date(wall0 + t * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
 // --- status line
-function status(text, live = false) { $("state").textContent = text; $("dot").classList.toggle("on", live); }
+function status(text, live = false) { $("state").textContent = text; $("dot").classList.toggle("on", live); $("statusbox").classList.toggle("live", live); }
+function progress(f) { $("prog").hidden = f == null; if (f != null) $("pv").style.width = Math.round(f * 100) + "%"; }
+const bars = () => [...$("meter").children];
 function warn(text) { $("warn").textContent = text || ""; $("warn").hidden = !text; $("state").hidden = !!text; }   // a warning takes the status text's place (same slot)
 
 // --- "hearing…" (number being spoken, before "yen"). Shows the pesos too, so a missed "yen" still gives the seller
@@ -253,7 +255,7 @@ async function fetchProgress(url) {
     const { done, value } = await rd.read();
     if (done) break;
     parts.push(value); n += value.length;
-    status(`Downloading the model… ${Math.min(99, Math.round(n / total * 100))}%`);
+    status(`Loading ${Math.min(99, Math.round(n / total * 100))}%`); progress(n / total);
   }
   const out = new Uint8Array(n);
   let o = 0;
@@ -266,14 +268,14 @@ function load() {
     ort.env.wasm.numThreads = 1;
     const cfg = await (await fetch(`${MODEL}/front.json`)).json();
     const buf = await fetchProgress(`${MODEL}/model.onnx`);
-    status("Getting ready…");
+    status("Getting ready…"); progress(1);
     L = await Listener.create(ort, cfg, buf, { rate, yenr: YR, altr: ALTR, tent: TENT, onWord, onPrice, onPartial: p => { if (p) onPartial(p); }, onAlts, onPeso });   // a null (next word not a number, e.g. a misheard 'yen') doesn't clear it: it stays 8 s to be tapped
-    status("Ready. Tap Start and say a price.");
+    status("Tap Start to listen"); progress(null);
     $("start").disabled = false;
     return L;
   })().catch(e => {
     loading = null; console.error(e);
-    status("Couldn’t load the model.");
+    status("Couldn’t load the model."); progress(null);
     warn("Check your internet connection and reload the page.");
     $("start").disabled = false;
     throw e;
@@ -306,19 +308,20 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114060136");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114060455");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114060136");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114060455");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
   let quiet = 0, behind = 0;
   node.port.onmessage = e => {
     const pk = e.data.peak;
-    $("lv").style.width = Math.min(100, Math.max(0, (20 * Math.log10(pk + 1e-6) + 60) / 60 * 100)) + "%";
+    const lvl = Math.min(1, Math.max(0, (20 * Math.log10(pk + 1e-6) + 60) / 60)), n = Math.round(lvl * 5);
+    bars().forEach((b, i) => b.classList.toggle("on", i < n));
     quiet = pk < 0.003 ? quiet + 1 : 0;                       // ~10 s of near silence
     L.push(e.data.samples).then(() => {
       if (L.dropped > behind) { behind = L.dropped; warn("This phone is falling behind. Close other apps or tabs."); }
@@ -337,7 +340,7 @@ function stopMic() {
   if (stream) stream.getTracks().forEach(t => t.stop());
   if (ctx) ctx.close();
   stream = ctx = null; running = false;
-  status("Stopped"); $("meter").hidden = true; warn("");
+  status("Stopped · tap Start"); $("meter").hidden = true; warn("");
   $("start").textContent = "🎤 Start"; $("start").classList.remove("stop");
   wake(false);
 }

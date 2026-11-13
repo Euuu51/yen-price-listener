@@ -28,17 +28,22 @@ button:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid
 
 /* top bar: mic, status, history */
 .bar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;height:48px}
-#start{height:48px;padding:0 16px;border-radius:12px;border:0;background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:1rem;cursor:pointer;white-space:nowrap}
-#start.stop{background:transparent;color:var(--fg);border:2px solid var(--line)}
+#start{height:48px;min-width:6.4rem;padding:0 14px;border-radius:12px;border:0;background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:1rem;cursor:pointer;white-space:nowrap}
+#start.stop{background:transparent;color:var(--live);border:2px solid var(--live)}
 #start:disabled{opacity:.5}
-.status{display:flex;align-items:center;gap:8px;min-width:0;font-size:.8rem;color:var(--muted);line-height:1.25}
+.status{display:flex;align-items:center;gap:8px;min-width:0;height:48px;box-sizing:border-box;padding:0 12px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:.8rem;color:var(--muted);line-height:1.25}
+.status.live{border-color:color-mix(in srgb,var(--live) 45%,var(--line));color:var(--fg);font-weight:600;font-size:.9rem}
 #state,#warn{min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 #warn{color:var(--warn);font-weight:600}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--faint);flex:none}
 .dot.on{background:var(--live);animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.35}}
-.meter{width:2.6rem;height:6px;background:var(--line);border-radius:3px;overflow:hidden;flex:none}
-.meter i{display:block;height:100%;width:0;background:var(--ok);transition:width .1s}
+.meter{display:flex;align-items:flex-end;gap:3px;height:20px;margin-left:auto;flex:none}
+.meter i{width:4px;border-radius:2px;background:var(--line);transition:background .08s}
+.meter i:nth-child(1){height:30%}.meter i:nth-child(2){height:48%}.meter i:nth-child(3){height:66%}.meter i:nth-child(4){height:84%}.meter i:nth-child(5){height:100%}
+.meter i.on{background:var(--ok)}
+.prog{margin-left:auto;width:3rem;height:6px;border-radius:3px;background:var(--line);overflow:hidden;flex:none}
+.prog i{display:block;height:100%;width:0;background:var(--accent)}
 #histbtn{height:48px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:.9rem;font-weight:600}
 
 /* hearing: the number being said, before "yen" */
@@ -80,12 +85,12 @@ button:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid
 /* keypad: always there, takes the rest of the height */
 .keypad{display:grid;grid-template-rows:repeat(5,minmax(40px,1fr));gap:8px;min-height:0}
 .krow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;min-height:0}
-.krow.act{grid-template-columns:1fr 2fr}
+.krow.act .use{grid-column:span 2}
 .keypad button{border-radius:12px;border:1px solid var(--line);background:var(--key);font-size:1.5rem;font-weight:600;cursor:pointer;min-height:0;font-variant-numeric:tabular-nums;touch-action:manipulation}
 .keypad button:active{background:var(--line)}
 .keypad .use{background:var(--accent);color:var(--accent-fg);border:0;font-size:1.1rem;font-weight:700}
 .keypad .use:disabled{opacity:.4}
-.keypad .clr{font-size:1.1rem}
+.keypad .clr{font-size:1.5rem;color:var(--muted)}
 
 /* history screen (the only place you leave the calculator for) */
 #histview{position:fixed;inset:0;z-index:10;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch}
@@ -138,7 +143,7 @@ footer{color:var(--faint);font-size:.8rem;text-align:center}
 <div id="app">
   <div class="bar">
     <button id="start" disabled>🎤 Start</button>
-    <div class="status"><span class="dot" id="dot"></span><span id="state">Loading…</span><span id="warn" role="alert" hidden></span><div class="meter" id="meter" hidden><i id="lv"></i></div></div>
+    <div class="status" id="statusbox"><span class="dot" id="dot"></span><span id="state">Loading…</span><span id="warn" role="alert" hidden></span><span class="prog" id="prog" hidden><i id="pv"></i></span><span class="meter" id="meter" hidden><i></i><i></i><i></i><i></i><i></i></span></div>
     <button id="histbtn">History</button>
   </div>
 
@@ -194,6 +199,6 @@ footer{color:var(--faint);font-size:.8rem;text-align:center}
     <footer>Experimental</footer>
   </div>
 </div>
-<script type="module" src="app_en.js?v=20261114060136"></script>
+<script type="module" src="app_en.js?v=20261114060455"></script>
 </body>
 </html>
