@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114054124";
+import { Listener } from "./listener.js?v=20261114054507";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -54,12 +54,12 @@ function onPartial(p) {
 setAlts([]);
 $("hearing").onclick = () => {
   const p = hearP; if (!p) { kopen(); return; }                    // nothing being heard: it is a plain tap
-  const li = addRow(p.t, pair(p.yen), "Kept by tap (no “yen” heard)");
+  const li = addRow(p.t, pair(p.yen), "Applied by tap (no “yen” heard)");
   rowOf.set(p.t, li);
   recent.push({ t: p.t, yen: p.yen, all: null, li, confirmed: null, manual: true });
   showLatest(p.yen, p.words, p.t);
   const a = L && L.altsAt ? L.altsAt(p.t, p.yen) : null;             // other readings of the same stretch of sound
-  if (a) { onAlts({ t: p.t, ...a, tentative: false }); setSub(li, "Kept by tap (no “yen” heard)" + (a.alts.length > 1 ? " · or " + a.alts.slice(1).map(x => `${fmtY(x.yen)} (${php(x.yen)})`).join(", ") : "")); }
+  if (a) { onAlts({ t: p.t, ...a, tentative: false }); setSub(li, "Applied by tap (no “yen” heard)" + (a.alts.length > 1 ? " · or " + a.alts.slice(1).map(x => `${fmtY(x.yen)} (${php(x.yen)})`).join(", ") : "")); }
 };
 
 // --- latest price card
@@ -326,12 +326,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114054124");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114054507");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114054124");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114054507");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
