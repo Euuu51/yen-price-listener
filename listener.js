@@ -1,8 +1,8 @@
 // 聞き取りの本体: 16 kHz の音 → log-mel → モデル（160 ms ごと、状態つき）→ 語 → 値段。
 // ブラウザ（onnxruntime-web）でも node（onnxruntime-node）でも同じコードで動く。ort は外から渡す。
-import { LogMel } from "./frontend.js?v=20261114051412";
-import { NUMWORDS, priceOfRun } from "./words.js?v=20261114051412";
-import { cands, WIN_BACK, WIN_FWD } from "./nbest.js?v=20261114051412";
+import { LogMel } from "./frontend.js?v=20261114052348";
+import { NUMWORDS, priceOfRun } from "./words.js?v=20261114052348";
+import { cands, WIN_BACK, WIN_FWD } from "./nbest.js?v=20261114052348";
 
 // 新方式（2026-11-12、train/curve.py の listener_events と同じ）
 export const GAP = 1.5;        // 数の語と語の間がこれ（秒、語の出た時刻どうし）より長く空いたら別の数（one hundred …… one thousand）。yen の前の間では切らない。売り手の配信で 1.2 秒は値段の頭を切った（80→78）、1.5 秒は 82
@@ -119,7 +119,7 @@ export class Listener {
       const pv = new Float32Array(V);
       for (let v = 0; v < V; v++) pv[v] = Math.exp(L[v * T + t] - mx) / z;
       this.pf.push(pv);
-      const keep = Math.round((WIN_BACK + WIN_FWD + 1) / 0.02);
+      const keep = Math.round((WIN_BACK + WIN_FWD + 9) / 0.02);   // +9 s: altsAt() for a number kept by tap up to 8 s later (2026-11-14)
       if (this.pf.length > keep) { this.pf.splice(0, this.pf.length - keep); }
       this.pfBase = this.outFrames + t + 1 - this.pf.length;
       if (a !== this.prev && a !== 0) this.word(this.cfg.vocab[a], time);
@@ -136,6 +136,24 @@ export class Listener {
       this.altStep(this.outFrames + t, time);
     }
     this.outFrames += T;
+  }
+
+  // 押して残した途中の数（yen を聞き逃した所）の候補: 最後の数の語の時刻 t の前後をビームで読み直す（2026-11-14）
+  // → {alts, all}（onAlts と同じ形、alts の先頭は yen0）。読み直す音がもう無ければ null
+  altsAt(t, yen0) {
+    const f = Math.round(t / 0.02) + (this.cfg.lookahead || 0) + Math.round(WIN_FWD / 0.02);
+    let k = f - this.pfBase;
+    if (k < 0 || !this.pf.length) return null;
+    if (k >= this.pf.length) k = this.pf.length - 1;                 // tapped right after the last word
+    const a0 = Math.max(0, k - Math.round(WIN_BACK / 0.02));
+    const P = this.pf.slice(a0, k + Math.round(WIN_FWD / 0.02) + 1);
+    const c = cands(P, k - a0, this.cfg.vocab);
+    if (!c.length) return null;
+    const top = c[0].p, alts = [{ yen: yen0, p: (c.find(x => x.yen === yen0) || { p: 0 }).p }];
+    for (const x of c) if (x.p >= this.altr * top && !alts.some(y => y.yen === x.yen)) alts.push(x);
+    const all = [...alts];
+    for (const x of c) if (!all.some(y => y.yen === x.yen)) all.push(x);
+    return { alts: alts.slice(0, ALTN), all: all.slice(0, ALTN) };
   }
 
   // 読み直し: 値段のフレームから WIN_FWD 秒たったら前後をビームで読み、僅差の候補を出す。仮の値段（yen の確率の山）もここで
