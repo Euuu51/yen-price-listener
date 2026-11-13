@@ -40,8 +40,9 @@ header p{margin:4px 0 0;color:var(--muted)}
 .latest .label{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:.9rem}
 .hearing{min-height:1.7em;color:var(--faint);font-size:1.15rem;font-weight:600;visibility:hidden}
 .hearing.on{visibility:visible}
-.yen{font-size:3.2rem;font-weight:800;line-height:1.1;letter-spacing:-.02em}
-.php{font-size:2.3rem;font-weight:700;color:var(--peso);line-height:1.15}
+.yen{font-size:1.7rem;font-weight:700;line-height:1.2}
+.php{font-size:3.4rem;font-weight:800;color:var(--peso);line-height:1.05;letter-spacing:-.02em;overflow-wrap:anywhere}
+.rateline{color:var(--muted);font-size:.9rem;margin-top:2px}
 .empty{color:var(--faint);font-size:1.15rem;padding:14px 0}
 .heard{font-family:var(--mono);font-size:.85rem;color:var(--muted);margin-top:8px;overflow-wrap:anywhere}
 .latest.flash{animation:flash 1s ease-out}
@@ -52,7 +53,8 @@ header p{margin:4px 0 0;color:var(--muted)}
 .alts:empty{display:none}
 .alts .h{color:var(--muted);font-size:.9rem;margin-bottom:6px}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:1.1rem;white-space:nowrap}
+.chip{font:inherit;font-size:1.1rem;white-space:nowrap;border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-height:44px;background:var(--bg);color:var(--fg);cursor:pointer}
+.chip:active{background:var(--line)}
 .chip .p{color:var(--peso)}
 
 /* History */
@@ -92,7 +94,7 @@ footer{color:var(--faint);font-size:.85rem;text-align:center}
 <main>
 <header>
   <h1>Yen Price Listener</h1>
-  <p>Listens for prices like “four thousand yen” and shows them in pesos — live.</p>
+  <p>Say a price like “four thousand yen”. The peso amount shows up right away.</p>
 </header>
 
 <section class="card">
@@ -107,6 +109,7 @@ footer{color:var(--faint);font-size:.85rem;text-align:center}
   <div id="price" hidden>
     <div class="yen num" id="yen"></div>
     <div class="php num" id="php"></div>
+    <div class="rateline num" id="rateline"></div>
     <div id="conf"></div>
     <div class="heard" id="heard"></div>
     <div class="alts" id="alts"></div>
@@ -125,7 +128,7 @@ footer{color:var(--faint);font-size:.85rem;text-align:center}
   <div>
     <label class="field"><span>Exchange rate</span>
       <span class="rate">¥1 = ₱<input type="number" id="rate" step="0.01" min="0" inputmode="decimal"></span>
-      <small>Sellers in these streams usually use ₱0.44.</small></label>
+      <small>The rate you sell at.</small></label>
     <label class="field"><span>Try a recording instead</span>
       <input type="file" id="file" accept="audio/*">
       <small>Pick an audio file on your device. It is read here, not uploaded.</small></label>
@@ -136,16 +139,15 @@ footer{color:var(--faint);font-size:.85rem;text-align:center}
   <summary>Tips &amp; privacy</summary>
   <div>
     <ul>
-      <li>Keep your phone near the speaker.</li>
-      <li>Works with English prices ending in “yen”.</li>
-      <li>If unsure, it lists other possible prices. A peso amount from the seller picks the right one (✓).</li>
-      <li>It can mishear. Check before you buy.</li>
+      <li>Say prices in English and end with “yen”, like “two thousand five hundred yen”.</li>
+      <li>If it isn’t sure, it shows other possible prices. Tap the right one.</li>
+      <li>Check the number before you say it.</li>
       <li>Runs on your phone. No audio is uploaded or saved.</li>
     </ul>
   </div>
 </details>
 <footer>Experimental</footer>
 </main>
-<script type="module" src="app_en.js?v=20261114050537"></script>
+<script type="module" src="app_en.js?v=20261114050809"></script>
 </body>
 </html>

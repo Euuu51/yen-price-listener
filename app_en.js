@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114050537";
+import { Listener } from "./listener.js?v=20261114050809";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -16,6 +16,8 @@ $("rate").onchange = () => {
   if (!(v > 0)) { $("rate").value = rate; return; }
   rate = v; try { localStorage.setItem("rate", rate); } catch {}
   if (L) L.rate = rate;
+  const r = recent.find(x => x.t === bigT);
+  if (r) { const y = r.picked ?? r.confirmed ?? r.yen; $("php").textContent = php(y); $("rateline").textContent = `at ₱${rate} per ¥1`; }
 };
 
 const fmtY = v => "¥" + v.toLocaleString("en-US");
@@ -48,7 +50,7 @@ let bigT = null, bigAt = 0;
 function showLatest(y, words, t) {
   bigT = t; bigAt = Date.now();
   $("price").hidden = false; $("empty").hidden = true;
-  $("yen").textContent = fmtY(y); $("php").textContent = php(y);
+  $("yen").textContent = fmtY(y); $("php").textContent = php(y); $("rateline").textContent = `at ₱${rate} per ¥1`;
   $("heard").textContent = words ? `Heard: “${words}”` : "";
   $("conf").innerHTML = ""; $("alts").innerHTML = "";
   const c = $("latest"); c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash");
@@ -60,7 +62,22 @@ function tick() {
   $("ago").textContent = s < 5 ? "just now" : s < 60 ? `${s} s ago` : s < 3600 ? `${Math.floor(s / 60)} min ago` : "";
 }
 setInterval(tick, 1000);
-const chip = y => `<span class="chip num">${fmtY(y)} · <span class="p">${php(y)}</span></span>`;
+const chip = y => `<button class="chip num" data-yen="${y}">${fmtY(y)} · <span class="p">${php(y)}</span></button>`;
+// tap an alternative: it becomes the price (sellers know what they said)
+$("alts").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  const y = +b.dataset.yen, r = recent.find(x => x.t === bigT);
+  if (!r) return;
+  const was = r.picked ?? r.yen;
+  r.picked = y;
+  $("yen").textContent = fmtY(y); $("php").textContent = php(y);
+  $("heard").textContent = `You picked this. First heard as ${fmtY(r.yen)}`;
+  const others = (r.alts || []).filter(v => v !== y);
+  if (!others.includes(was)) others.unshift(was);
+  $("alts").innerHTML = others.length ? `<div class="h">Other possible prices:</div><div class="chips">${others.map(chip).join("")}</div>` : "";
+  r.li.querySelector(".v").innerHTML = pair(y);
+  setSub(r.li, `Picked · first heard <span class="was">${fmtY(r.yen)}</span>`);
+});
 
 // --- history
 const recent = [];                              // recent prices {t, yen, all, li, confirmed}
@@ -110,9 +127,10 @@ function onAlts(a) {
   const r = recent.find(x => x.t === a.t); if (r) r.all = a.all;
   if (a.alts.length < 2) return;
   const others = a.alts.slice(1).map(x => x.yen);
+  if (r) r.alts = a.alts.map(x => x.yen);
   const li = rowOf.get(a.t);
   if (li && !(r && r.confirmed)) setSub(li, "or " + others.map(v => `${fmtY(v)} (${php(v)})`).join(", "));
-  if (bigT === a.t && !(r && r.confirmed)) $("alts").innerHTML = `<div class="h">Not sure — it could also be:</div><div class="chips">${others.map(chip).join("")}</div>`;
+  if (bigT === a.t && !(r && (r.confirmed || r.picked != null))) $("alts").innerHTML = `<div class="h">Not sure. Tap if it was:</div><div class="chips">${others.map(chip).join("")}</div>`;
 }
 
 function onPeso(e) {
@@ -123,17 +141,15 @@ function onPeso(e) {
     if (c == null) continue;
     r.confirmed = c;
     r.li.querySelector(".v").innerHTML = pair(c);
-    setSub(r.li, `✓ Seller said ${fmtP(e.php)}` + (c !== r.yen ? ` · first heard <span class="was">${fmtY(r.yen)}</span>` : ""), "ok");
+    setSub(r.li, `✓ You said ${fmtP(e.php)}` + (c !== r.yen ? ` · first heard <span class="was">${fmtY(r.yen)}</span>` : ""), "ok");
     if (bigT === r.t) {
       $("yen").textContent = fmtY(c); $("php").textContent = php(c); $("alts").innerHTML = "";
       if (c !== r.yen) $("heard").textContent = `First heard as ${fmtY(r.yen)}`;
-      $("conf").innerHTML = `<span class="badge">✓ Confirmed — seller said ${esc(fmtP(e.php))}</span>`;
+      $("conf").innerHTML = `<span class="badge">✓ Matches the ${esc(fmtP(e.php))} you said</span>`;
     }
     return;
   }
-  // already confirmed (repeat of the peso amount) → ignore
-  if (recent.some(r => e.t - r.t <= PESO_WIN && e.t > r.t && [r.yen, r.confirmed, ...(r.all || []).map(x => x.yen)].some(x => x != null && fit(x)))) return;
-  addRow(e.t, `${fmtP(e.php)}`, `Heard a peso amount ≈ ${fmtY(Math.round(e.php / rate))}`, "soft");
+  // otherwise it is the seller reading out a peso amount: nothing to show
 }
 
 function onWord() {}
@@ -168,7 +184,7 @@ function load() {
     const buf = await fetchProgress(`${MODEL}/model.onnx`);
     status("Getting ready…");
     L = await Listener.create(ort, cfg, buf, { rate, yenr: YR, altr: ALTR, tent: TENT, onWord, onPrice, onPartial, onAlts, onPeso });
-    status("Ready. Tap Start and play the stream.");
+    status("Ready. Tap Start, then say a price.");
     $("start").disabled = false;
     return L;
   })().catch(e => {
@@ -206,12 +222,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114050537");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114050809");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114050537");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114050809");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });
