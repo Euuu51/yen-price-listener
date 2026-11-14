@@ -1,7 +1,7 @@
 // Public English page (2026-11-14, user: "link-only public release, all English, no model choice, bigger text").
 // Same pipeline as app.js: mic (or file) → 16 kHz → Listener → price + close alternatives + peso confirmation.
 // Fixed settings: yen rescue 0.3, alternatives ≥ 0.2 × top (max 4), tentative "?" at P(yen) ≥ 0.2.
-import { Listener } from "./listener.js?v=20261114062356";
+import { Listener } from "./listener.js?v=20261114222728";
 
 const $ = id => document.getElementById(id);
 const MODEL = document.documentElement.dataset.model || new URLSearchParams(location.search).get("m") || "out_t5k_l_h";   // the published site sets data-model="model"; out_t5k_l_h = t5k_l with half-precision weights (same 120/120)
@@ -244,7 +244,23 @@ function kuse() {
   showLatest(y, "", t);
   note("Typed");
 }
-$("keypad").addEventListener("click", e => { const b = e.target.closest("button[data-k]"); if (b) kkey(b.dataset.k); });
+// ⌫ held down keeps deleting, like a phone keyboard (2026-11-14 user): one at once, then repeats after 0.45 s
+let delT = 0, delPtr = false;
+const delStop = () => { clearTimeout(delT); delT = 0; };
+const delBtn = $("keypad").querySelector('[data-k="del"]');
+delBtn.addEventListener("pointerdown", e => {
+  if (e.button > 0) return;
+  delPtr = true; delStop(); kkey("del");
+  const rep = () => { if (!kv) return delStop(); kkey("del"); delT = setTimeout(rep, 70); };
+  delT = setTimeout(rep, 450);
+});
+for (const ev of ["pointerup", "pointercancel", "pointerleave"]) delBtn.addEventListener(ev, delStop);
+delBtn.addEventListener("contextmenu", e => e.preventDefault());
+$("keypad").addEventListener("click", e => {
+  const b = e.target.closest("button[data-k]"); if (!b) return;
+  if (b === delBtn && delPtr) { delPtr = false; return; }   // already deleted on pointerdown (a keyboard-activated click still deletes)
+  kkey(b.dataset.k);
+});
 $("kclr").onclick = () => { kv = ""; kact = false; kshow(); };
 $("kuse").onclick = kuse;
 document.addEventListener("keydown", e => {
@@ -331,12 +347,12 @@ async function startMic() {
   stream = await gum;
   let src;
   try {
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114062356");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114222728");
     src = ctx.createMediaStreamSource(stream);
   } catch {
     ctx.close();
     ctx = new AudioContext();
-    await ctx.audioWorklet.addModule("worklet.js?v=20261114062356");
+    await ctx.audioWorklet.addModule("worklet.js?v=20261114222728");
     src = ctx.createMediaStreamSource(stream);
   }
   const node = new AudioWorkletNode(ctx, "tap", { processorOptions: { n: L.cfg.chunk * 160 } });

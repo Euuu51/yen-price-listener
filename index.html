@@ -85,7 +85,7 @@ button:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid
 .keypad{display:grid;grid-template-rows:repeat(5,minmax(40px,1fr));gap:8px;min-height:0}
 .krow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;min-height:0}
 .krow.act .use{grid-column:span 2}
-.keypad button{border-radius:12px;border:1px solid var(--line);background:var(--key);font-size:1.5rem;font-weight:600;cursor:pointer;min-height:0;font-variant-numeric:tabular-nums;touch-action:manipulation}
+.keypad button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;border-radius:12px;border:1px solid var(--line);background:var(--key);font-size:1.5rem;font-weight:600;cursor:pointer;min-height:0;font-variant-numeric:tabular-nums;touch-action:manipulation}
 .keypad button:active{background:var(--line)}
 .keypad .use{background:var(--accent);color:var(--accent-fg);border:0;font-size:1.1rem;font-weight:700}
 .keypad .use:disabled{opacity:.4}
@@ -203,6 +203,6 @@ footer{color:var(--faint);font-size:.8rem;text-align:center}
     <footer>Experimental</footer>
   </div>
 </div>
-<script type="module" src="app_en.js?v=20261114062356"></script>
+<script type="module" src="app_en.js?v=20261114222728"></script>
 </body>
 </html>
